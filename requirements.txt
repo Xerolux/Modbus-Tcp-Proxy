@@ -1,2 +1,2 @@
-pymodbus
-yaml
+pymodbus>=3.8.0
+PyYAML>=6.0
