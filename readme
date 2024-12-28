@@ -1,0 +1,157 @@
+# Modbus TCP Proxy - Git Repository and Installation Guide
+
+## Overview
+This repository contains a Python-based Modbus TCP Proxy script that acts as a bridge between multiple clients and a single Modbus TCP server. It serializes requests to avoid cross-messaging and ensures smooth communication.
+
+---
+
+## Features
+- Supports configuration via `config.yaml`
+- Handles multiple clients with serialized requests
+- Adjustable server settings, including timeouts and delays
+- Built-in threading for efficient request processing
+
+---
+
+## Prerequisites
+Ensure the following are installed on your Debian system:
+- Python 3.8 or newer
+- `pip` package manager
+- `virtualenv` (optional but recommended for isolated environments)
+
+---
+
+## Installation Guide
+
+### Clone the Repository
+```bash
+git clone https://github.com/Xerolux/Modbus-Tcp-Proxy.git
+cd Modbus-Tcp-Proxy
+```
+
+### Create and Activate a Virtual Environment (Optional)
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### Install Python Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### Set Up the Configuration File
+1. Copy the example configuration file:
+   ```bash
+   cp config.example.yaml config.yaml
+   ```
+2. Edit `config.yaml` to match your setup:
+   ```yaml
+   Proxy:
+     ServerHost: 0.0.0.0
+     ServerPort: 502
+
+   ModbusServer:
+     ModbusServerHost: 192.168.1.100
+     ModbusServerPort: 502
+     ConnectionTimeout: 10
+     DelayAfterConnection: 0.5
+   ```
+
+### Run the Proxy Script
+```bash
+python modbus_tcp_proxy.py
+```
+
+---
+
+## Automated Installation Script
+Save the following script as `install.sh` in the repository root.
+
+```bash
+#!/bin/bash
+
+# Update and install dependencies
+sudo apt update
+sudo apt install -y python3 python3-pip python3-venv git
+
+# Clone the repository
+echo "Cloning repository..."
+git clone https://github.com/Xerolux/Modbus-Tcp-Proxy.git
+cd Modbus-Tcp-Proxy
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Copy example config
+cp config.example.yaml config.yaml
+
+# Create systemd service file
+echo "Creating systemd service file..."
+sudo bash -c 'cat << EOF > /etc/systemd/system/modbus_proxy.service
+[Unit]
+Description=Modbus TCP Proxy Service
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /path/to/Modbus-Tcp-Proxy/modbus_tcp_proxy.py
+WorkingDirectory=/path/to/Modbus-Tcp-Proxy
+Restart=always
+User=$USER
+
+[Install]
+WantedBy=multi-user.target
+EOF'
+
+# Reload systemd and enable service
+sudo systemctl daemon-reload
+sudo systemctl enable modbus_proxy.service
+
+# Start the service
+sudo systemctl start modbus_proxy.service
+
+echo "\nInstallation complete! Edit 'config.yaml' to configure the proxy and manage the service using systemd."
+```
+
+### Usage
+1. Make the script executable:
+   ```bash
+   chmod +x install.sh
+   ```
+2. Run the script:
+   ```bash
+   ./install.sh
+   ```
+
+---
+
+## Repository Structure
+- `modbus_tcp_proxy.py`: Main script for the Modbus TCP Proxy
+- `config.example.yaml`: Example configuration file
+- `requirements.txt`: Python dependencies
+- `install.sh`: Automated installation script (if created)
+- `modbus_proxy.service`: Example systemd service file (created during installation)
+
+---
+
+## Additional Notes
+- Ensure the Modbus server is reachable from the machine running this proxy.
+- The `config.yaml` file must be present in the same directory as `modbus_tcp_proxy.py`.
+- Logs are printed to the console. For production, consider adding logging to a file.
+- Update `/path/to/Modbus-Tcp-Proxy` in the systemd service file with the actual directory path.
+
+---
+
+For issues or suggestions, feel free to create a pull request or open an issue in the repository.
+
+---
+
+## requirements.txt
+```plaintext
+pymodbus
+yaml
+```
