@@ -93,7 +93,7 @@ Description=Modbus TCP Proxy Service
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3 /opt/Modbus-Tcp-Proxy/modbus_tcp_proxy.py
+ExecStart=/opt/Modbus-Tcp-Proxy/venv/bin/python3 /opt/Modbus-Tcp-Proxy/modbus_tcp_proxy.py
 WorkingDirectory=/opt/Modbus-Tcp-Proxy
 Restart=always
 User=$USER
@@ -109,4 +109,4 @@ sudo systemctl enable modbus_proxy.service
 # Start the service
 sudo systemctl start modbus_proxy.service
 
-echo "\nInstallation complete! Edit 'config.yaml' to reconfigure the proxy and manage the service using systemd."
+echo "\nInstallation complete! Edit 'config.yaml' to reconfigure the proxy and manage the servic
