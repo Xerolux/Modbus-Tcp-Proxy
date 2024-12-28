@@ -6,8 +6,8 @@ sudo apt install -y python3 python3-pip python3-venv git
 
 # Clone the repository
 echo "Cloning repository..."
-git clone https://github.com/Xerolux/Modbus-Tcp-Proxy.git
-cd Modbus-Tcp-Proxy
+git clone https://github.com/Xerolux/Modbus-Tcp-Proxy.git /opt/Modbus-Tcp-Proxy
+cd /opt/Modbus-Tcp-Proxy
 
 # Create virtual environment
 python3 -m venv venv
@@ -27,8 +27,8 @@ Description=Modbus TCP Proxy Service
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3 /path/to/Modbus-Tcp-Proxy/modbus_tcp_proxy.py
-WorkingDirectory=/path/to/Modbus-Tcp-Proxy
+ExecStart=/usr/bin/python3 /opt/Modbus-Tcp-Proxy/modbus_tcp_proxy.py
+WorkingDirectory=/opt/Modbus-Tcp-Proxy
 Restart=always
 User=$USER
 
