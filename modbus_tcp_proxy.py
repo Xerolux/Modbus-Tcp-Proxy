@@ -3,6 +3,7 @@ import threading
 import time
 import yaml
 from pymodbus.client.sync import ModbusTcpClient
+import logging
 
 # Load configuration
 with open("config.yaml", "r") as file:
@@ -15,24 +16,41 @@ MODBUS_SERVER_PORT = int(config["ModbusServer"]["ModbusServerPort"])
 CONNECTION_TIMEOUT = int(config["ModbusServer"]["ConnectionTimeout"])
 DELAY_AFTER_CONNECTION = float(config["ModbusServer"]["DelayAfterConnection"])
 
+# Configure logging
+if config.get("Logging", {}).get("Enable", False):
+    log_file = config["Logging"].get("LogFile", "modbus_proxy.log")
+    log_level = getattr(logging, config["Logging"].get("LogLevel", "INFO").upper(), logging.INFO)
+    logging.basicConfig(filename=log_file, level=log_level, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger()
+else:
+    logger = None
+
 # Thread-safe request queue
-request_queue = threading.Queue()
+request_queue = threading.Queue(maxsize=100)
 
 # Handle each client connection
 def handle_client(client_socket, client_address):
     try:
-        print(f"New client connected: {client_address}")
+        if logger:
+            logger.info(f"New client connected: {client_address}")
+        else:
+            print(f"New client connected: {client_address}")
+        
         while True:
-            # Receive data from client
             data = client_socket.recv(1024)
             if not data:
-                print(f"Client disconnected: {client_address}")
+                if logger:
+                    logger.info(f"Client disconnected: {client_address}")
+                else:
+                    print(f"Client disconnected: {client_address}")
                 break
 
-            # Enqueue the request
             request_queue.put((data, client_socket))
     except Exception as e:
-        print(f"Error with client {client_address}: {e}")
+        if logger:
+            logger.error(f"Error with client {client_address}: {e}")
+        else:
+            print(f"Error with client {client_address}: {e}")
     finally:
         client_socket.close()
 
@@ -40,37 +58,44 @@ def handle_client(client_socket, client_address):
 def process_requests():
     while True:
         try:
-            # Get the next request
             data, client_socket = request_queue.get()
 
-            # Connect to the Modbus server
             with ModbusTcpClient(MODBUS_SERVER_HOST, MODBUS_SERVER_PORT) as modbus_client:
-                modbus_client.connect()
-                print(f"Connected to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT}")
+                if not modbus_client.connect():
+                    if logger:
+                        logger.error(f"Failed to connect to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT}")
+                    else:
+                        print(f"Failed to connect to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT}")
+                    continue
 
-                # Delay after connection if configured
+                if logger:
+                    logger.info(f"Connected to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT}")
+                else:
+                    print(f"Connected to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT}")
+
                 time.sleep(DELAY_AFTER_CONNECTION)
 
-                # Send the data to the Modbus server
                 modbus_client.socket.sendall(data)
-
-                # Receive the response
                 response = modbus_client.socket.recv(1024)
-
-                # Send the response back to the client
                 client_socket.sendall(response)
 
         except Exception as e:
-            print(f"Error processing request: {e}")
+            if logger:
+                logger.error(f"Error processing request: {e}")
+            else:
+                print(f"Error processing request: {e}")
 
 # Start the proxy server
 def start_server():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((SERVER_HOST, SERVER_PORT))
     server_socket.listen(5)
-    print(f"Proxy server listening on {SERVER_HOST}:{SERVER_PORT}")
 
-    # Start the request processing thread
+    if logger:
+        logger.info(f"Proxy server listening on {SERVER_HOST}:{SERVER_PORT}")
+    else:
+        print(f"Proxy server listening on {SERVER_HOST}:{SERVER_PORT}")
+
     threading.Thread(target=process_requests, daemon=True).start()
 
     while True:
@@ -78,10 +103,16 @@ def start_server():
             client_socket, client_address = server_socket.accept()
             threading.Thread(target=handle_client, args=(client_socket, client_address), daemon=True).start()
         except KeyboardInterrupt:
-            print("Shutting down server...")
+            if logger:
+                logger.info("Shutting down server...")
+            else:
+                print("Shutting down server...")
             break
         except Exception as e:
-            print(f"Error in server: {e}")
+            if logger:
+                logger.error(f"Error in server: {e}")
+            else:
+                print(f"Error in server: {e}")
 
     server_socket.close()
 
