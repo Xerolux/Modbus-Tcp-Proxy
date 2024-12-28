@@ -1,5 +1,4 @@
-
-# Modbus TCP Proxy - Git Repository and Installation Guide
+# Modbus TCP Proxy
 
 ## Overview
 
@@ -9,11 +8,11 @@ This repository contains a Python-based Modbus TCP Proxy script that acts as a b
 
 ## Features
 
-- Supports configuration via `config.yaml`
-- Handles multiple clients with serialized requests
-- Adjustable server settings, including timeouts and delays
-- Built-in threading for efficient request processing
-- Optional logging support for detailed monitoring
+- **Configuration via `config.yaml`**
+- **Handles multiple clients with serialized requests**
+- **Adjustable server settings** (timeouts and delays)
+- **Built-in threading** for efficient request processing
+- **Optional logging support** for detailed monitoring
 
 ---
 
@@ -21,9 +20,9 @@ This repository contains a Python-based Modbus TCP Proxy script that acts as a b
 
 Ensure the following are installed on your Debian system:
 
-- Python 3.8 or newer
-- `pip` package manager
-- `virtualenv` (optional but recommended for isolated environments)
+- **Python 3.8** or newer
+- **`pip`** package manager
+- **`virtualenv`** (optional but recommended for isolated environments)
 
 ---
 
@@ -79,7 +78,9 @@ pip install -r requirements.txt
 python modbus_tcp_proxy.py
 ```
 
-### Usage / Install
+---
+
+## Installation Script Usage
 
 1. Make the script executable:
    ```bash
@@ -94,11 +95,11 @@ python modbus_tcp_proxy.py
 
 ## Repository Structure
 
-- `modbus_tcp_proxy.py`: Main script for the Modbus TCP Proxy
-- `config.example.yaml`: Example configuration file
-- `requirements.txt`: Python dependencies
-- `install.sh`: Automated installation script (if created)
-- `modbus_proxy.service`: Example systemd service file (created during installation)
+- **`modbus_tcp_proxy.py`**: Main script for the Modbus TCP Proxy
+- **`config.example.yaml`**: Example configuration file
+- **`requirements.txt`**: Python dependencies
+- **`install.sh`**: Automated installation script (if created)
+- **`modbus_proxy.service`**: Example systemd service file (created during installation)
 
 ---
 
@@ -111,4 +112,15 @@ python modbus_tcp_proxy.py
 
 ---
 
-For issues or suggestions, feel free to create a pull request or open an issue in the repository.
+## Contribution
+
+For issues or suggestions, feel free to:
+
+- Open an [Issue](https://github.com/Xerolux/Modbus-Tcp-Proxy/issues)
+- Create a Pull Request (PR)
+
+---
+
+## License
+
+This project is licensed under the **MIT License**. See the `LICENSE` file for more details.
