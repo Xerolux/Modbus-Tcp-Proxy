@@ -1,3 +1,4 @@
+
 # Modbus TCP Proxy - Git Repository and Installation Guide
 
 ## Overview
@@ -12,6 +13,7 @@ This repository contains a Python-based Modbus TCP Proxy script that acts as a b
 - Handles multiple clients with serialized requests
 - Adjustable server settings, including timeouts and delays
 - Built-in threading for efficient request processing
+- Optional logging support for detailed monitoring
 
 ---
 
@@ -64,6 +66,11 @@ pip install -r requirements.txt
      ModbusServerPort: 502
      ConnectionTimeout: 10
      DelayAfterConnection: 0.5
+
+   Logging:
+     Enable: true
+     LogFile: /var/log/modbus_proxy.log
+     LogLevel: INFO
    ```
 
 ### Run the Proxy Script
@@ -124,8 +131,7 @@ sudo systemctl enable modbus_proxy.service
 # Start the service
 sudo systemctl start modbus_proxy.service
 
-echo "
-Installation complete! Edit 'config.yaml' to configure the proxy and manage the service using systemd."
+echo "\nInstallation complete! Edit 'config.yaml' to configure the proxy and manage the service using systemd."
 ```
 
 ### Usage
@@ -155,7 +161,7 @@ Installation complete! Edit 'config.yaml' to configure the proxy and manage the 
 
 - Ensure the Modbus server is reachable from the machine running this proxy.
 - The `config.yaml` file must be present in the same directory as `modbus_tcp_proxy.py`.
-- Logs are printed to the console. For production, consider adding logging to a file.
+- Logs are printed to the console by default. For production, enable logging in the `config.yaml` file.
 - The repository is installed in `/opt/Modbus-Tcp-Proxy` for consistency.
 
 ---
