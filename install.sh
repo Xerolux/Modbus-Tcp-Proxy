@@ -15,6 +15,10 @@ if [ -d "/opt/Modbus-Tcp-Proxy" ]; then
     if [ "$LOCAL" != "$REMOTE" ]; then
         echo "Updating repository..."
         git pull
+        if [ $? -ne 0 ]; then
+            echo "Git pull failed. Exiting."
+            exit 1
+        fi
     else
         echo "Already up-to-date. Exiting installation."
         exit 0
@@ -22,15 +26,40 @@ if [ -d "/opt/Modbus-Tcp-Proxy" ]; then
 else
     echo "Cloning repository..."
     git clone https://github.com/Xerolux/Modbus-Tcp-Proxy.git /opt/Modbus-Tcp-Proxy
+    if [ $? -ne 0 ]; then
+        echo "Git clone failed. Exiting."
+        exit 1
+    fi
     cd /opt/Modbus-Tcp-Proxy
+fi
+
+# Check Python version
+python3 -c "import sys; assert sys.version_info >= (3, 7), 'Python 3.7 or newer is required.'"
+if [ $? -ne 0 ]; then
+    echo "Unsupported Python version. Please install Python 3.7 or newer."
+    exit 1
 fi
 
 # Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
+if [ -z "$VIRTUAL_ENV" ]; then
+    echo "Virtual environment activation failed. Exiting."
+    exit 1
+fi
 
 # Install Python dependencies
+if [ ! -f requirements.txt ]; then
+    echo "requirements.txt not found. Exiting."
+    deactivate
+    exit 1
+fi
 pip install -r requirements.txt
+if [ $? -ne 0 ]; then
+    echo "Failed to install dependencies. Exiting."
+    deactivate
+    exit 1
+fi
 
 # Configuration menu
 echo "Starting configuration menu..."
@@ -53,11 +82,28 @@ delay_after=${delay_after:-0.5}
 read -p "Enable Logging? (yes/no, default: yes): " enable_logging
 enable_logging=${enable_logging:-yes}
 if [ "$enable_logging" == "yes" ]; then
+    enable_logging=true
     read -p "Enter Log File Path (default: /var/log/modbus_proxy.log): " log_file
     log_file=${log_file:-/var/log/modbus_proxy.log}
 
     read -p "Enter Log Level (INFO/DEBUG/ERROR, default: INFO): " log_level
     log_level=${log_level:-INFO}
+else
+    enable_logging=false
+fi
+
+# Ensure log directory exists
+if [ "$enable_logging" == "true" ]; then
+    log_dir=$(dirname "$log_file")
+    if [ ! -d "$log_dir" ]; then
+        echo "Log directory $log_dir not found. Creating it..."
+        sudo mkdir -p "$log_dir"
+        sudo chown $USER:$USER "$log_dir"
+    fi
+    if [ ! -w "$log_dir" ]; then
+        echo "No write permissions for $log_dir. Adjusting permissions..."
+        sudo chmod u+w "$log_dir"
+    fi
 fi
 
 # Create config.yaml
@@ -76,7 +122,7 @@ Logging:
   Enable: $enable_logging
 EOF
 
-if [ "$enable_logging" == "yes" ]; then
+if [ "$enable_logging" == "true" ]; then
   cat << EOF >> config.yaml
   LogFile: $log_file
   LogLevel: $log_level
@@ -104,9 +150,15 @@ EOF'
 
 # Reload systemd and enable service
 sudo systemctl daemon-reload
-sudo systemctl enable modbus_proxy.service
+if ! sudo systemctl enable modbus_proxy.service; then
+    echo "Failed to enable systemd service. Exiting."
+    exit 1
+fi
 
-# Start the service
-sudo systemctl start modbus_proxy.service
+if ! sudo systemctl start modbus_proxy.service; then
+    echo "Failed to start systemd service. Exiting."
+    exit 1
+fi
 
-echo "\nInstallation complete! Edit 'config.yaml' to reconfigure the proxy and manage the servic
+# Completion message
+echo "\nInstallation complete! Edit 'config.yaml' to reconfigure the proxy. Remember to restart the service using 'sudo systemctl restart modbus_proxy.service' after changes."
