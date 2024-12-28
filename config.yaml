@@ -1,9 +1,14 @@
-[Proxy]
-ServerHost = 0.0.0.0
-ServerPort = 502
+Proxy:
+  ServerHost: 0.0.0.0
+  ServerPort: 502
 
-[ModbusServer]
-ModbusServerHost = 192.168.1.100
-ModbusServerPort = 502
-ConnectionTimeout = 10
-DelayAfterConnection = 0.5
+ModbusServer:
+  ModbusServerHost: 192.168.1.100
+  ModbusServerPort: 502
+  ConnectionTimeout: 10
+  DelayAfterConnection: 0.5
+
+Logging:
+  Enable: true
+  LogFile: /var/log/modbus_proxy.log
+  LogLevel: INFO
