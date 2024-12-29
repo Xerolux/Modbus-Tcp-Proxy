@@ -70,24 +70,36 @@ def process_requests():
         try:
             data, client_socket = request_queue.get()
 
-            with ModbusTcpClient(MODBUS_SERVER_HOST, MODBUS_SERVER_PORT) as modbus_client:
-                if not modbus_client.connect():
+            # Retry connection if it fails
+            connected = False
+            retry_attempts = 3
+            for attempt in range(retry_attempts):
+                try:
+                    with ModbusTcpClient(host=MODBUS_SERVER_HOST, port=MODBUS_SERVER_PORT) as modbus_client:
+                        if not modbus_client.connect():
+                            raise ConnectionError(f"Attempt {attempt + 1}/{retry_attempts}: Cannot connect to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT}")
+                        connected = True
+                        if logger:
+                            logger.info(f"Connected to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT}")
+                        else:
+                            print(f"Connected to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT}")
+
+                        time.sleep(DELAY_AFTER_CONNECTION)
+
+                        modbus_client.socket.sendall(data)
+                        response = modbus_client.socket.recv(1024)
+                        client_socket.sendall(response)
+                        break
+                except Exception as retry_error:
                     if logger:
-                        logger.error(f"Failed to connect to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT}")
+                        logger.error(retry_error)
                     else:
-                        print(f"Failed to connect to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT}")
-                    continue
+                        print(retry_error)
 
-                if logger:
-                    logger.info(f"Connected to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT}")
-                else:
-                    print(f"Connected to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT}")
+                time.sleep(1)  # Wait before retrying
 
-                time.sleep(DELAY_AFTER_CONNECTION)
-
-                modbus_client.socket.sendall(data)
-                response = modbus_client.socket.recv(1024)
-                client_socket.sendall(response)
+            if not connected:
+                raise ConnectionError(f"Failed to connect to Modbus server at {MODBUS_SERVER_HOST}:{MODBUS_SERVER_PORT} after {retry_attempts} attempts.")
 
         except Exception as e:
             if logger:
