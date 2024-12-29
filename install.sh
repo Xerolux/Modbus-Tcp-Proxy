@@ -2,7 +2,7 @@
 
 # Update and install dependencies
 sudo apt update
-sudo apt install -y python3 python3-pip python3-venv git || { echo "Failed to install dependencies. Exiting."; exit 1; }
+sudo apt install -y python3 python3-pip python3-venv git bc || { echo "Failed to install dependencies. Exiting."; exit 1; }
 
 # Create base directory if it does not exist
 if [ ! -d "/opt/Modbus-Tcp-Proxy" ]; then
