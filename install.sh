@@ -82,8 +82,8 @@ if ! [[ $proxy_port =~ ^[0-9]+$ ]] || [ $proxy_port -le 0 ] || [ $proxy_port -gt
     exit 1
 fi
 
-read -p "Enter Modbus Server Host (default: 192.168.178.196): " modbus_host
-modbus_host=${modbus_host:-192.168.178.196}
+read -p "Enter Modbus Server Host (default: 192.168.178.197): " modbus_host
+modbus_host=${modbus_host:-192.168.178.197}
 if [[ ! $modbus_host =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
     echo "Invalid Modbus Server Host. Exiting."
     exit 1
