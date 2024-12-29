@@ -20,7 +20,8 @@ if [ -d "/opt/Modbus-Tcp-Proxy/.git" ]; then
     REMOTE=$(git rev-parse @{u})
 
     if [ "$LOCAL" != "$REMOTE" ]; then
-        echo "Updating repository..."
+        echo "Updating repository and overwriting local changes..."
+        git reset --hard @{u} || { echo "Git reset failed. Exiting."; exit 1; }
         git pull || { echo "Git pull failed. Exiting."; exit 1; }
     else
         echo "Already up-to-date. Exiting installation."
@@ -51,6 +52,18 @@ if [ ! -f /opt/Modbus-Tcp-Proxy/requirements.txt ]; then
     exit 1
 fi
 pip install -r requirements.txt || { echo "Failed to install Python dependencies. Exiting."; deactivate; exit 1; }
+
+# Check if the proxy port is in use and kill the process if needed
+if lsof -i :5020 > /dev/null; then
+    echo "Port 5020 is in use. Attempting to free it..."
+    pid=$(lsof -t -i :5020)
+    if [ -n "$pid" ]; then
+        echo "Killing process $pid that is using port 5020..."
+        sudo kill -9 $pid || { echo "Failed to kill process $pid. Exiting."; exit 1; }
+    fi
+else
+    echo "Port 5020 is free."
+fi
 
 # Configuration menu
 echo "Starting configuration menu..."
