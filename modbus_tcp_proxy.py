@@ -1,9 +1,12 @@
+#!/usr/bin/env python3
 import socket
 import threading
 import time
 import yaml
-from pymodbus.client.sync import ModbusTcpClient
+import queue
+from pymodbus.client import ModbusTcpClient
 import logging
+import ipaddress
 
 # Load configuration
 with open("config.yaml", "r") as file:
@@ -16,6 +19,13 @@ MODBUS_SERVER_PORT = int(config["ModbusServer"]["ModbusServerPort"])
 CONNECTION_TIMEOUT = int(config["ModbusServer"]["ConnectionTimeout"])
 DELAY_AFTER_CONNECTION = float(config["ModbusServer"]["DelayAfterConnection"])
 
+# Validate SERVER_HOST as IPv4
+try:
+    ipaddress.IPv4Address(SERVER_HOST)
+except ipaddress.AddressValueError:
+    print(f"Invalid IPv4 address for SERVER_HOST: {SERVER_HOST}")
+    exit(1)
+
 # Configure logging
 if config.get("Logging", {}).get("Enable", False):
     log_file = config["Logging"].get("LogFile", "modbus_proxy.log")
@@ -26,7 +36,7 @@ else:
     logger = None
 
 # Thread-safe request queue
-request_queue = threading.Queue(maxsize=100)
+request_queue = queue.Queue(maxsize=100)
 
 # Handle each client connection
 def handle_client(client_socket, client_address):
@@ -35,7 +45,7 @@ def handle_client(client_socket, client_address):
             logger.info(f"New client connected: {client_address}")
         else:
             print(f"New client connected: {client_address}")
-        
+
         while True:
             data = client_socket.recv(1024)
             if not data:
@@ -87,6 +97,7 @@ def process_requests():
 
 # Start the proxy server
 def start_server():
+    # Ensure the server socket is IPv4 only
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((SERVER_HOST, SERVER_PORT))
     server_socket.listen(5)
