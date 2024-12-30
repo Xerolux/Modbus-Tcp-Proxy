@@ -28,7 +28,9 @@ def load_config():
     try:
         ipaddress.IPv4Address(config["Proxy"]["ServerHost"])
     except ipaddress.AddressValueError as exc:
-        raise ValueError(f"Invalid IPv4 address: {config['Proxy']['ServerHost']}") from exc
+        raise ValueError(
+            f"Invalid IPv4 address: {config['Proxy']['ServerHost']}"
+        ) from exc
 
     if not (0 < config["Proxy"]["ServerPort"] < 65536):
         raise ValueError(f"Invalid port: {config['Proxy']['ServerPort']}")
@@ -43,7 +45,13 @@ def init_logger(config):
     :return: Logger-Objekt
     """
     logger = logging.getLogger()
-    logger.setLevel(getattr(logging, config["Logging"].get("LogLevel", "INFO").upper(), logging.INFO))
+    logger.setLevel(
+        getattr(
+            logging,
+            config["Logging"].get("LogLevel", "INFO").upper(),
+            logging.INFO,
+        )
+    )
 
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
@@ -96,13 +104,19 @@ def process_requests(request_queue, config, logger):
 
             for attempt in range(retry_attempts):
                 try:
-                    with ModbusTcpClient(config["ModbusServer"]["ModbusServerHost"],
-                                         port=int(config["ModbusServer"]["ModbusServerPort"])) as modbus_client:
+                    with ModbusTcpClient(
+                        config["ModbusServer"]["ModbusServerHost"],
+                        port=int(config["ModbusServer"]["ModbusServerPort"]),
+                    ) as modbus_client:
                         if not modbus_client.connect():
-                            raise ConnectionError(f"Attempt {attempt + 1}/{retry_attempts}: Connection failed")
+                            raise ConnectionError(
+                                f"Attempt {attempt + 1}/{retry_attempts}: Connection failed"
+                            )
 
                         logger.info("Connected to Modbus server")
-                        time.sleep(config["ModbusServer"].get("DelayAfterConnection", 0))
+                        time.sleep(
+                            config["ModbusServer"].get("DelayAfterConnection", 0)
+                        )
 
                         modbus_client.socket.sendall(data)
                         response = modbus_client.socket.recv(1024)
@@ -133,16 +147,24 @@ def start_server(config):
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind((config["Proxy"]["ServerHost"], config["Proxy"]["ServerPort"]))
+        server_socket.bind(
+            (config["Proxy"]["ServerHost"], config["Proxy"]["ServerPort"])
+        )
         server_socket.listen(5)
-        logger.info("Proxy server listening on %s:%d", config["Proxy"]["ServerHost"], config["Proxy"]["ServerPort"])
+        logger.info(
+            "Proxy server listening on %s:%d",
+            config["Proxy"]["ServerHost"],
+            config["Proxy"]["ServerPort"],
+        )
 
         executor.submit(process_requests, request_queue, config, logger)
 
         try:
             while True:
                 client_socket, client_address = server_socket.accept()
-                executor.submit(handle_client, client_socket, client_address, request_queue, logger)
+                executor.submit(
+                    handle_client, client_socket, client_address, request_queue, logger
+                )
         except KeyboardInterrupt:
             logger.info("Shutting down server...")
         except Exception as exc:
