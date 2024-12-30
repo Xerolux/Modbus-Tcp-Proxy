@@ -50,12 +50,12 @@ display_info() {
     local proxy_port
 
     version=$(cat "$VERSION_FILE")
-    proxy_host=$(grep -Po '(?<=ServerHost: ).*' "$CONFIG_FILE")
-    proxy_port=$(grep -Po '(?<=ServerPort: ).*' "$CONFIG_FILE")
+    proxy_host=$(grep -Po '(?<=ServerHost: ).*' "$CONFIG_FILE" | head -1)
+    proxy_port=$(grep -Po '(?<=ServerPort: ).*' "$CONFIG_FILE" | head -1)
 
     echo "Update / Start / Install erfolgreich!"
     echo "Version: $version"
-    echo "Proxy ist erreichbar unter: http://${proxy_host}:${proxy_port}"
+    echo "Proxy ist erreichbar unter: ${proxy_host}:${proxy_port}"
 }
 
 # Konfigurationsdatei prüfen und zusammenführen
@@ -85,6 +85,10 @@ merge_config() {
 
 # Überprüfen und das Skript aktualisieren
 update_and_execute_latest() {
+    if [ "${SKIP_UPDATE_CHECK:-0}" -eq 1 ]; then
+        return  # Update-Check überspringen, wenn bereits geprüft
+    fi
+
     echo "Prüfe auf die neueste Version des Installationsskripts..."
     if [ -d "$BASE_DIR/.git" ]; then
         echo "Aktualisiere Repository..."
@@ -96,9 +100,13 @@ update_and_execute_latest() {
     fi
 
     # Prüfe, ob das Installationsskript aktualisiert wurde
-    if [ "$(sha256sum "$INSTALL_SCRIPT" | awk '{print $1}')" != "$(git -C "$BASE_DIR" show origin/main:install.sh | sha256sum | awk '{print $1}')" ]; then
-        echo "Installationsskript wurde aktualisiert. Starte erneut..."
-        exec bash "$INSTALL_SCRIPT" "$@"
+    local current_hash new_hash
+    current_hash=$(sha256sum "$INSTALL_SCRIPT" | awk '{print $1}')
+    new_hash=$(git -C "$BASE_DIR" show origin/main:install.sh | sha256sum | awk '{print $1}')
+
+    if [ "$current_hash" != "$new_hash" ]; then
+        echo "Installationsskript wurde aktualisiert. Starte die neue Version..."
+        SKIP_UPDATE_CHECK=1 exec bash "$INSTALL_SCRIPT" "$@"
     fi
 }
 
@@ -106,12 +114,7 @@ update_and_execute_latest() {
 check_os
 
 # Überprüfen und das Skript aktualisieren
-if [ "$(basename "$0")" != "install.sh" ]; then
-    cp "$0" "$INSTALL_SCRIPT"
-    exec bash "$INSTALL_SCRIPT" "$@"
-else
-    update_and_execute_latest
-fi
+update_and_execute_latest
 
 # Installationsprozess starten
 echo "Starte den Installationsprozess..."
