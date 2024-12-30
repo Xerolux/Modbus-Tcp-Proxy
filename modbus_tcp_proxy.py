@@ -1,4 +1,3 @@
-"""Modbus TCP Proxy Server"""
 #!/usr/bin/env python3
 """
 Modbus TCP Proxy Server
@@ -18,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 import yaml
 from pymodbus.client import ModbusTcpClient
 
+
 def load_config():
     """
     Loads and validates the configuration file.
@@ -30,14 +30,13 @@ def load_config():
     try:
         ipaddress.IPv4Address(config["Proxy"]["ServerHost"])
     except ipaddress.AddressValueError as exc:
-        raise ValueError(
-            f"Invalid IPv4 address: {config['Proxy']['ServerHost']}"
-        ) from exc
+        raise ValueError(f"Invalid IPv4 address: {config['Proxy']['ServerHost']}") from exc
 
-    if not (0 < config["Proxy"]["ServerPort"] < 65536):
+    if not 0 < config["Proxy"]["ServerPort"] < 65536:
         raise ValueError(f"Invalid port: {config['Proxy']['ServerPort']}")
 
     return config
+
 
 def init_logger(config):
     """
@@ -69,6 +68,7 @@ def init_logger(config):
 
     return logger
 
+
 def handle_client(client_socket, client_address, request_queue, logger):
     """
     Handles a client connection.
@@ -90,6 +90,7 @@ def handle_client(client_socket, client_address, request_queue, logger):
         logger.error("Error with client %s: %s", client_address, exc)
     finally:
         client_socket.close()
+
 
 def process_requests(request_queue, config, logger):
     """
@@ -130,8 +131,9 @@ def process_requests(request_queue, config, logger):
             else:
                 logger.error("Failed to connect to Modbus server after retries")
                 client_socket.close()
-        except (queue.Empty, Exception) as exc:
+        except (queue.Empty, OSError) as exc:
             logger.error("Error processing request: %s", exc)
+
 
 def start_server(config):
     """
@@ -169,10 +171,11 @@ def start_server(config):
                 )
         except KeyboardInterrupt:
             logger.info("Shutting down server...")
-        except (OSError, Exception) as exc:
+        except OSError as exc:
             logger.error("Server error: %s", exc)
         finally:
             server_socket.close()
+
 
 if __name__ == "__main__":
     try:
