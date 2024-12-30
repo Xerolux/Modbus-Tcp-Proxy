@@ -77,6 +77,22 @@ Logging:
 - **ModbusServer.ModbusServerPort**: Der Zielport des Modbus-Servers.
 - **Logging.LogFile**: Der Pfad zur Log-Datei.
 
+## Verwendete Bibliotheken
+Dieses Projekt nutzt folgende Python-Bibliotheken:
+
+- **pymodbus**: Für die Modbus-TCP-Kommunikation ([PyPI-Link](https://pypi.org/project/pymodbus/))
+- **PyYAML**: Für das Laden und Verarbeiten der YAML-Konfigurationsdateien ([PyPI-Link](https://pypi.org/project/PyYAML/))
+- **logging**: Eingebaute Python-Bibliothek für die Protokollierung
+- **queue**: Eingebaute Python-Bibliothek für das Management von Thread-Sicherheit
+- **socket**: Eingebaute Python-Bibliothek für Netzwerkoperationen
+- **threading**: Eingebaute Python-Bibliothek für Multithreading
+
+Die benötigten Bibliotheken werden automatisch über das Installationsskript installiert. Für eine manuelle Installation nutze:
+
+```bash
+pip install -r /opt/Modbus-Tcp-Proxy/requirements.txt
+```
+
 ## Nutzung
 ### Service starten
 Nach der Installation wird der Systemd-Service automatisch gestartet. Um ihn manuell zu steuern:
