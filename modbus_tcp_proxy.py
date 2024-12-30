@@ -181,5 +181,11 @@ if __name__ == "__main__":
     try:
         configuration = load_config()
         start_server(configuration)
+    except FileNotFoundError as exc:
+        print(f"Configuration file not found: {exc}")
+    except ValueError as exc:
+        print(f"Invalid configuration: {exc}")
+    except OSError as exc:
+        print(f"OS error: {exc}")
     except Exception as exc:
-        print(f"Startup error: {exc}")
+        print(f"Unexpected error: {exc}")
