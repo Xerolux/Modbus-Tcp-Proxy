@@ -2,12 +2,47 @@
 
 set -e
 
+# Variables
+REPO_URL="https://github.com/Xerolux/Modbus-Tcp-Proxy.git"
+BASE_DIR="/opt/Modbus-Tcp-Proxy"
+INSTALL_SCRIPT="$BASE_DIR/install.sh"
+
+# Function to update and re-execute the latest script
+update_and_execute_latest() {
+    echo "Checking for the latest install script..."
+    if [ -d "$BASE_DIR/.git" ]; then
+        echo "Updating repository..."
+        git -C "$BASE_DIR" fetch
+        git -C "$BASE_DIR" reset --hard origin/main
+    else
+        echo "Cloning repository..."
+        git clone "$REPO_URL" "$BASE_DIR"
+    fi
+
+    # Check if the install script has changed
+    if [ "$(sha256sum "$INSTALL_SCRIPT" | awk '{print $1}')" != "$(git -C "$BASE_DIR" show origin/main:install.sh | sha256sum | awk '{print $1}')" ]; then
+        echo "Install script updated. Re-executing the latest version..."
+        exec bash "$INSTALL_SCRIPT" "$@"
+    fi
+}
+
+# Check and update the script
+if [ "$(basename "$0")" != "install.sh" ]; then
+    # If not running from the expected path, copy the script and restart
+    cp "$0" "$INSTALL_SCRIPT"
+    exec bash "$INSTALL_SCRIPT" "$@"
+else
+    update_and_execute_latest
+fi
+
+# Installation process
+echo "Starting the installation process..."
+
 # Update and install dependencies
 echo "Updating system and installing dependencies..."
 sudo apt update && sudo apt install -y python3 python3-pip python3-venv git bc || { echo "Failed to install dependencies. Exiting."; exit 1; }
 
 # Create base directory
-BASE_DIR="/opt/Modbus-Tcp-Proxy"
 if [ ! -d "$BASE_DIR" ]; then
     echo "Creating base directory at $BASE_DIR..."
     sudo mkdir -p "$BASE_DIR"
@@ -17,15 +52,12 @@ else
 fi
 
 # Clone or update repository
-REPO_URL="https://github.com/Xerolux/Modbus-Tcp-Proxy.git"
 if [ -d "$BASE_DIR/.git" ]; then
     echo "Updating repository..."
-    cd "$BASE_DIR"
-    git fetch && git reset --hard origin/main || { echo "Git update failed. Exiting."; exit 1; }
+    git -C "$BASE_DIR" fetch && git -C "$BASE_DIR" reset --hard origin/main || { echo "Git update failed. Exiting."; exit 1; }
 else
     echo "Cloning repository from $REPO_URL..."
     git clone "$REPO_URL" "$BASE_DIR" || { echo "Git clone failed. Exiting."; exit 1; }
-    cd "$BASE_DIR"
 fi
 
 # Verify Python version
@@ -51,60 +83,5 @@ fi
 echo "Installing Python dependencies..."
 pip install -r "$REQ_FILE" || { echo "Failed to install Python dependencies. Exiting."; deactivate; exit 1; }
 
-# Check and free proxy port if necessary
-PROXY_PORT=5020
-if lsof -i :"$PROXY_PORT" > /dev/null; then
-    echo "Port $PROXY_PORT is in use. Attempting to free it..."
-    pid=$(lsof -t -i :"$PROXY_PORT")
-    if [ -n "$pid" ]; then
-        sudo kill -9 "$pid" || { echo "Failed to free port $PROXY_PORT. Exiting."; exit 1; }
-    fi
-else
-    echo "Port $PROXY_PORT is free."
-fi
-
-# Configuration
-read -p "Enter Proxy Server Host (default: 0.0.0.0): " proxy_host
-proxy_host=${proxy_host:-0.0.0.0}
-if [[ ! $proxy_host =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ && $proxy_host != "0.0.0.0" ]]; then
-    echo "Invalid Proxy Server Host. Exiting."
-    exit 1
-fi
-
-# Similar validation steps for other inputs...
-
-# Create configuration file
-CONFIG_FILE="$BASE_DIR/config.yaml"
-cat << EOF > "$CONFIG_FILE"
-Proxy:
-  ServerHost: $proxy_host
-  ServerPort: $PROXY_PORT
-# Additional configuration goes here...
-EOF
-echo "Configuration saved to $CONFIG_FILE."
-
-# Create systemd service file
-SERVICE_FILE="/etc/systemd/system/modbus_proxy.service"
-echo "Creating systemd service file..."
-sudo bash -c "cat << EOF > $SERVICE_FILE
-[Unit]
-Description=Modbus TCP Proxy Service
-After=network.target
-
-[Service]
-ExecStart=$VENV_DIR/bin/python3 $BASE_DIR/modbus_tcp_proxy.py
-WorkingDirectory=$BASE_DIR
-Restart=always
-User=$USER
-Environment=\"PYTHONUNBUFFERED=1\"
-
-[Install]
-WantedBy=multi-user.target
-EOF"
-
-# Reload systemd and start service
-sudo systemctl daemon-reload
-sudo systemctl enable modbus_proxy.service
-sudo systemctl start modbus_proxy.service
-
-echo "Installation and configuration complete. Service is running."
+# Ensure the Modbus proxy is ready to run
+echo "Installation complete! Use 'sudo systemctl restart modbus_proxy.service' to apply changes."
