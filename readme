@@ -14,20 +14,37 @@ Dieses Projekt bietet einen Modbus-TCP-Proxy-Service, der es ermöglicht, Modbus
 - Python: Version 3.7 oder neuer
 
 ## Installation
-### 1. Voraussetzungen installieren
+### Automatische Installation
+Für die automatische Installation des Modbus-TCP-Proxys führe die folgenden Befehle aus:
+
+```bash
+wget -O install.sh https://raw.githubusercontent.com/Xerolux/Modbus-Tcp-Proxy/main/install.sh
+bash install.sh
+```
+
+Das Skript erledigt alle notwendigen Schritte, einschließlich:
+- Installation der Abhängigkeiten
+- Einrichtung der virtuellen Umgebung
+- Konfiguration des Systemd-Services
+- Starten des Services
+
+### Manuelle Installation
+Falls du die Installation manuell durchführen möchtest, folge diesen Schritten:
+
+#### 1. Voraussetzungen installieren
 Führe die folgenden Befehle aus, um die benötigten Pakete zu installieren:
 ```bash
 sudo apt update
 sudo apt install -y python3 python3-pip python3-venv git bc
 ```
 
-### 2. Repository klonen
+#### 2. Repository klonen
 Klonen des Git-Repositorys in das Verzeichnis `/opt/Modbus-Tcp-Proxy`:
 ```bash
 git clone https://github.com/Xerolux/Modbus-Tcp-Proxy.git /opt/Modbus-Tcp-Proxy
 ```
 
-### 3. Installationsskript ausführen
+#### 3. Installationsskript ausführen
 Führe das Installationsskript aus:
 ```bash
 bash /opt/Modbus-Tcp-Proxy/install.sh
@@ -64,17 +81,17 @@ Logging:
 ### Service starten
 Nach der Installation wird der Systemd-Service automatisch gestartet. Um ihn manuell zu steuern:
 
-Service starten:
+**Service starten:**
 ```bash
 sudo systemctl start modbus_proxy.service
 ```
 
-Service stoppen:
+**Service stoppen:**
 ```bash
 sudo systemctl stop modbus_proxy.service
 ```
 
-Service-Status überprüfen:
+**Service-Status überprüfen:**
 ```bash
 sudo systemctl status modbus_proxy.service
 ```
@@ -93,4 +110,3 @@ Dieses Projekt ist unter der **MIT License** lizenziert. Weitere Informationen f
 
 ## Support
 Bei Fragen oder Problemen wende dich bitte über die Issues-Seite des Repositorys an uns.
-
