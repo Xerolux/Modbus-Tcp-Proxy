@@ -6,6 +6,8 @@ set -e
 REPO_URL="https://github.com/Xerolux/Modbus-Tcp-Proxy.git"
 BASE_DIR="/opt/Modbus-Tcp-Proxy"
 INSTALL_SCRIPT="$BASE_DIR/install.sh"
+SERVICE_NAME="modbus_proxy.service"
+VERSION_FILE="$BASE_DIR/VERSION"
 
 # Function to update and re-execute the latest script
 update_and_execute_latest() {
@@ -23,6 +25,27 @@ update_and_execute_latest() {
     if [ "$(sha256sum "$INSTALL_SCRIPT" | awk '{print $1}')" != "$(git -C "$BASE_DIR" show origin/main:install.sh | sha256sum | awk '{print $1}')" ]; then
         echo "Install script updated. Re-executing the latest version..."
         exec bash "$INSTALL_SCRIPT" "$@"
+    fi
+}
+
+# Stop the service before updates
+stop_service() {
+    echo "Stopping $SERVICE_NAME..."
+    sudo systemctl stop "$SERVICE_NAME" || echo "$SERVICE_NAME not running."
+}
+
+# Start the service after updates
+start_service() {
+    echo "Starting $SERVICE_NAME..."
+    sudo systemctl start "$SERVICE_NAME"
+}
+
+# Display the current version
+display_version() {
+    if [ -f "$VERSION_FILE" ]; then
+        echo "Current version: $(cat $VERSION_FILE)"
+    else
+        echo "VERSION file not found."
     fi
 }
 
@@ -60,6 +83,12 @@ else
     git clone "$REPO_URL" "$BASE_DIR" || { echo "Git clone failed. Exiting."; exit 1; }
 fi
 
+# Display current version
+display_version
+
+# Stop the service before updates
+stop_service
+
 # Verify Python version
 python3 -c "import sys; assert sys.version_info >= (3, 7), 'Python 3.7 or newer is required.'" || { echo "Unsupported Python version. Exiting."; exit 1; }
 
@@ -83,5 +112,31 @@ fi
 echo "Installing Python dependencies..."
 pip install -r "$REQ_FILE" || { echo "Failed to install Python dependencies. Exiting."; deactivate; exit 1; }
 
-# Ensure the Modbus proxy is ready to run
-echo "Installation complete! Use 'sudo systemctl restart modbus_proxy.service' to apply changes."
+# Update systemd service
+echo "Updating systemd service file..."
+SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME"
+sudo bash -c "cat << EOF > $SERVICE_FILE
+[Unit]
+Description=Modbus TCP Proxy Service
+After=network.target
+
+[Service]
+ExecStart=$VENV_DIR/bin/python3 $BASE_DIR/modbus_tcp_proxy.py
+WorkingDirectory=$BASE_DIR
+Restart=always
+User=$USER
+Environment=\"PYTHONUNBUFFERED=1\"
+
+[Install]
+WantedBy=multi-user.target
+EOF"
+
+sudo systemctl daemon-reload
+
+# Start the service after updates
+start_service
+
+# Display final version
+echo "Installation complete!"
+display_version
+echo "Use 'sudo systemctl restart $SERVICE_NAME' to apply configuration changes if needed."
