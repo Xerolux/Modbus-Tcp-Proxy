@@ -187,5 +187,5 @@ if __name__ == "__main__":
         print(f"Invalid configuration: {exc}")
     except OSError as exc:
         print(f"OS error: {exc}")
-    except Exception as exc:
-        print(f"Unexpected error: {exc}")
+    except KeyboardInterrupt:
+        print("Server shutdown requested by user.")
