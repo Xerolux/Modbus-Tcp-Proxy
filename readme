@@ -1,60 +1,60 @@
 # Modbus TCP Proxy
 
-## Übersicht
-Dieses Projekt bietet einen Modbus-TCP-Proxy-Service, der es ermöglicht, Modbus-Kommunikation über TCP zu verwalten. Es unterstützt die dynamische Konfiguration und ist kompatibel mit Debian 12 und Ubuntu 24.
+## Overview
+This project provides a Modbus-TCP Proxy service that enables the management of Modbus communication over TCP. It supports dynamic configuration and is compatible with Debian 12 and Ubuntu 24.
 
 ## Features
-- Unterstützt Modbus-TCP-Kommunikation.
-- Dynamische Konfigurationsverwaltung.
-- Automatische Updates über Git.
-- Unterstützung für Systemd-Services.
+- Supports Modbus-TCP communication.
+- Dynamic configuration management.
+- Automatic updates via Git.
+- Systemd service support.
 
-## Systemanforderungen
-- Betriebssystem: Debian 12 oder Ubuntu 24
-- Python: Version 3.7 oder neuer
+## System Requirements
+- Operating System: Debian 12 or Ubuntu 24
+- Python: Version 3.7 or newer
 
 ## Installation
-### Automatische Installation
-Für die automatische Installation des Modbus-TCP-Proxys führe die folgenden Befehle aus:
+### Automatic Installation
+To automatically install the Modbus-TCP Proxy, run the following commands:
 
 ```bash
 wget -O install.sh https://raw.githubusercontent.com/Xerolux/Modbus-Tcp-Proxy/main/install.sh
 bash install.sh
 ```
 
-Das Skript erledigt alle notwendigen Schritte, einschließlich:
-- Installation der Abhängigkeiten
-- Einrichtung der virtuellen Umgebung
-- Konfiguration des Systemd-Services
-- Starten des Services
+The script performs all necessary steps, including:
+- Installing dependencies
+- Setting up a virtual environment
+- Configuring the Systemd service
+- Starting the service
 
-### Manuelle Installation
-Falls du die Installation manuell durchführen möchtest, folge diesen Schritten:
+### Manual Installation
+If you prefer manual installation, follow these steps:
 
-#### 1. Voraussetzungen installieren
-Führe die folgenden Befehle aus, um die benötigten Pakete zu installieren:
+#### 1. Install Dependencies
+Run the following commands to install the required packages:
 ```bash
 sudo apt update
 sudo apt install -y python3 python3-pip python3-venv git bc
 ```
 
-#### 2. Repository klonen
-Klonen des Git-Repositorys in das Verzeichnis `/opt/Modbus-Tcp-Proxy`:
+#### 2. Clone Repository
+Clone the Git repository into the `/opt/Modbus-Tcp-Proxy` directory:
 ```bash
 git clone https://github.com/Xerolux/Modbus-Tcp-Proxy.git /opt/Modbus-Tcp-Proxy
 ```
 
-#### 3. Installationsskript ausführen
-Führe das Installationsskript aus:
+#### 3. Run the Installation Script
+Execute the installation script:
 ```bash
 bash /opt/Modbus-Tcp-Proxy/install.sh
 ```
-Das Skript installiert Abhängigkeiten, erstellt eine virtuelle Umgebung und richtet den Systemd-Service ein.
+The script installs dependencies, creates a virtual environment, and sets up the Systemd service.
 
-## Konfiguration
-Die Konfiguration befindet sich in der Datei `config.yaml` im Verzeichnis `/opt/Modbus-Tcp-Proxy`.
+## Configuration
+The configuration file is located at `config.yaml` in the `/opt/Modbus-Tcp-Proxy` directory.
 
-### Beispiel-Konfiguration
+### Example Configuration
 ```yaml
 version: 0.0.4
 Proxy:
@@ -71,58 +71,58 @@ Logging:
   LogLevel: INFO
 ```
 
-- **Proxy.ServerHost**: Die Adresse, an die der Proxy gebunden wird.
-- **Proxy.ServerPort**: Der Port, auf dem der Proxy lauscht.
-- **ModbusServer.ModbusServerHost**: Die Zieladresse des Modbus-Servers.
-- **ModbusServer.ModbusServerPort**: Der Zielport des Modbus-Servers.
-- **Logging.LogFile**: Der Pfad zur Log-Datei.
+- **Proxy.ServerHost**: The address the proxy binds to.
+- **Proxy.ServerPort**: The port the proxy listens on.
+- **ModbusServer.ModbusServerHost**: The target address of the Modbus server.
+- **ModbusServer.ModbusServerPort**: The target port of the Modbus server.
+- **Logging.LogFile**: The path to the log file.
 
-## Verwendete Bibliotheken
-Dieses Projekt nutzt folgende Python-Bibliotheken:
+## Libraries Used
+This project uses the following Python libraries:
 
-- **pymodbus**: Für die Modbus-TCP-Kommunikation ([PyPI-Link](https://pypi.org/project/pymodbus/))
-- **PyYAML**: Für das Laden und Verarbeiten der YAML-Konfigurationsdateien ([PyPI-Link](https://pypi.org/project/PyYAML/))
-- **logging**: Eingebaute Python-Bibliothek für die Protokollierung
-- **queue**: Eingebaute Python-Bibliothek für das Management von Thread-Sicherheit
-- **socket**: Eingebaute Python-Bibliothek für Netzwerkoperationen
-- **threading**: Eingebaute Python-Bibliothek für Multithreading
+- **pymodbus**: For Modbus-TCP communication ([PyPI Link](https://pypi.org/project/pymodbus/))
+- **PyYAML**: For loading and processing YAML configuration files ([PyPI Link](https://pypi.org/project/PyYAML/))
+- **logging**: Built-in Python library for logging
+- **queue**: Built-in Python library for thread-safe management
+- **socket**: Built-in Python library for network operations
+- **threading**: Built-in Python library for multithreading
 
-Die benötigten Bibliotheken werden automatisch über das Installationsskript installiert. Für eine manuelle Installation nutze:
+The required libraries are automatically installed via the installation script. For manual installation, use:
 
 ```bash
 pip install -r /opt/Modbus-Tcp-Proxy/requirements.txt
 ```
 
-## Nutzung
-### Service starten
-Nach der Installation wird der Systemd-Service automatisch gestartet. Um ihn manuell zu steuern:
+## Usage
+### Start the Service
+The Systemd service is automatically started after installation. To manage it manually:
 
-**Service starten:**
+**Start the service:**
 ```bash
 sudo systemctl start modbus_proxy.service
 ```
 
-**Service stoppen:**
+**Stop the service:**
 ```bash
 sudo systemctl stop modbus_proxy.service
 ```
 
-**Service-Status überprüfen:**
+**Check service status:**
 ```bash
 sudo systemctl status modbus_proxy.service
 ```
 
-### Logs anzeigen
-Die Logs befinden sich standardmäßig unter `/var/log/modbus_proxy.log`.
+### View Logs
+Logs are located by default at `/var/log/modbus_proxy.log`.
 
 ## Update
-Das Installationsskript prüft automatisch auf Updates im Git-Repository und wendet diese an. Führe einfach das Installationsskript erneut aus:
+The installation script automatically checks for updates in the Git repository and applies them. Simply run the installation script again:
 ```bash
 bash /opt/Modbus-Tcp-Proxy/install.sh
 ```
 
-## Lizenz
-Dieses Projekt ist unter der **MIT License** lizenziert. Weitere Informationen findest du in der Datei [`LICENSE`](LICENSE).
+## License
+This project is licensed under the **MIT License**. For more details, see the [`LICENSE`](LICENSE) file.
 
 ## Support
-Bei Fragen oder Problemen wende dich bitte über die Issues-Seite des Repositorys an uns.
+If you have questions or encounter issues, please open an [issue on GitHub](https://github.com/Xerolux/Modbus-Tcp-Proxy/issues).
