@@ -1,20 +1,20 @@
-# Modbus TCP Proxy
+# **Modbus TCP Proxy**
 
-## Overview
+## **Overview**
 This project provides a Modbus-TCP Proxy service that enables the management of Modbus communication over TCP. It supports dynamic configuration and is compatible with Debian 12 and Ubuntu 24.
 
-## Features
-- Supports Modbus-TCP communication.
-- Dynamic configuration management.
-- Automatic updates via Git.
-- Systemd service support.
+## **Features**
+- **Supports Modbus-TCP communication.**
+- **Dynamic configuration management.**
+- **Automatic updates via Git.**
+- **Systemd service support.**
 
-## System Requirements
-- Operating System: Debian 12 or Ubuntu 24
-- Python: Version 3.7 or newer
+## **System Requirements**
+- **Operating System:** Debian 12 or Ubuntu 24
+- **Python:** Version 3.7 or newer
 
-## Installation
-### Automatic Installation
+## **Installation**
+### **Automatic Installation**
 To automatically install the Modbus-TCP Proxy, run the following commands:
 
 ```bash
@@ -23,38 +23,38 @@ bash install.sh
 ```
 
 The script performs all necessary steps, including:
-- Installing dependencies
-- Setting up a virtual environment
-- Configuring the Systemd service
-- Starting the service
+- **Installing dependencies**
+- **Setting up a virtual environment**
+- **Configuring the Systemd service**
+- **Starting the service**
 
-### Manual Installation
+### **Manual Installation**
 If you prefer manual installation, follow these steps:
 
-#### 1. Install Dependencies
+#### **1. Install Dependencies**
 Run the following commands to install the required packages:
 ```bash
 sudo apt update
 sudo apt install -y python3 python3-pip python3-venv git bc
 ```
 
-#### 2. Clone Repository
+#### **2. Clone Repository**
 Clone the Git repository into the `/opt/Modbus-Tcp-Proxy` directory:
 ```bash
 git clone https://github.com/Xerolux/Modbus-Tcp-Proxy.git /opt/Modbus-Tcp-Proxy
 ```
 
-#### 3. Run the Installation Script
+#### **3. Run the Installation Script**
 Execute the installation script:
 ```bash
 bash /opt/Modbus-Tcp-Proxy/install.sh
 ```
 The script installs dependencies, creates a virtual environment, and sets up the Systemd service.
 
-## Configuration
+## **Configuration**
 The configuration file is located at `config.yaml` in the `/opt/Modbus-Tcp-Proxy` directory.
 
-### Example Configuration
+### **Example Configuration**
 ```yaml
 version: 0.0.4
 Proxy:
@@ -77,7 +77,7 @@ Logging:
 - **ModbusServer.ModbusServerPort**: The target port of the Modbus server.
 - **Logging.LogFile**: The path to the log file.
 
-## Libraries Used
+## **Libraries Used**
 This project uses the following Python libraries:
 
 - **pymodbus**: For Modbus-TCP communication ([PyPI Link](https://pypi.org/project/pymodbus/))
@@ -93,8 +93,8 @@ The required libraries are automatically installed via the installation script. 
 pip install -r /opt/Modbus-Tcp-Proxy/requirements.txt
 ```
 
-## Usage
-### Start the Service
+## **Usage**
+### **Start the Service**
 The Systemd service is automatically started after installation. To manage it manually:
 
 **Start the service:**
@@ -112,17 +112,17 @@ sudo systemctl stop modbus_proxy.service
 sudo systemctl status modbus_proxy.service
 ```
 
-### View Logs
+### **View Logs**
 Logs are located by default at `/var/log/modbus_proxy.log`.
 
-## Update
+## **Update**
 The installation script automatically checks for updates in the Git repository and applies them. Simply run the installation script again:
 ```bash
 bash /opt/Modbus-Tcp-Proxy/install.sh
 ```
 
-## License
+## **License**
 This project is licensed under the **MIT License**. For more details, see the [`LICENSE`](LICENSE) file.
 
-## Support
+## **Support**
 If you have questions or encounter issues, please open an [issue on GitHub](https://github.com/Xerolux/Modbus-Tcp-Proxy/issues).
