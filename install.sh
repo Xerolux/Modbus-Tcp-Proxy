@@ -12,6 +12,16 @@ CONFIG_FILE="$BASE_DIR/config.yaml"
 MERGE_SCRIPT="$BASE_DIR/merge_config.py"
 VERSION_FILE="$BASE_DIR/VERSION"
 
+# Funktion: Lokale IP-Adresse ermitteln
+get_local_ip() {
+    local_ip=$(hostname -I | awk '{print $1}')
+    if [[ -z "$local_ip" ]]; then
+        echo "Konnte keine lokale IP-Adresse ermitteln. Stelle sicher, dass das Netzwerk funktioniert."
+        exit 1
+    fi
+    echo "$local_ip"
+}
+
 # Prüfen auf Debian 12 oder Ubuntu 24
 check_os() {
     echo "Prüfe Betriebssystemversion..."
@@ -46,16 +56,15 @@ restart_service() {
 # Zeige die aktuelle Version und Host-Info
 display_info() {
     local version
-    local proxy_host
     local proxy_port
+    local_ip=$(get_local_ip)
 
     version=$(cat "$VERSION_FILE")
-    proxy_host=$(grep -Po '(?<=ServerHost: ).*' "$CONFIG_FILE" | head -1)
     proxy_port=$(grep -Po '(?<=ServerPort: ).*' "$CONFIG_FILE" | head -1)
 
     echo "Update / Start / Install erfolgreich!"
     echo "Version: $version"
-    echo "Proxy ist erreichbar unter: ${proxy_host}:${proxy_port}"
+    echo "Proxy ist erreichbar unter: ${local_ip}:${proxy_port}"
 }
 
 # Konfigurationsdatei prüfen und zusammenführen
