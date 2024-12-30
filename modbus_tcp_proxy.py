@@ -1,3 +1,4 @@
+"""Modbus TCP Proxy Server"""
 #!/usr/bin/env python3
 """
 Modbus TCP Proxy Server
