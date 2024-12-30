@@ -1,4 +1,9 @@
+import os
 import yaml
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_CONFIG_FILE = os.path.join(BASE_DIR, "config.default.yaml")
+USER_CONFIG_FILE = os.path.join(BASE_DIR, "config.yaml")
 
 def merge_configs(default_file, user_file):
     with open(default_file, "r") as default:
@@ -21,4 +26,4 @@ def merge_configs(default_file, user_file):
         yaml.safe_dump(merged_config, user)
 
 if __name__ == "__main__":
-    merge_configs("config.default.yaml", "config.yaml")
+    merge_configs(DEFAULT_CONFIG_FILE, USER_CONFIG_FILE)
