@@ -2,7 +2,8 @@
 """
 Modbus TCP Proxy Server
 
-Dieses Modul implementiert einen Proxy-Server für Modbus-TCP-Anfragen.
+This module implements a proxy server for Modbus TCP requests.
+It includes functions for loading the configuration, processing requests, and starting the server.
 """
 
 import os
@@ -18,9 +19,9 @@ from pymodbus.client import ModbusTcpClient
 
 def load_config():
     """
-    Lädt und validiert die Konfigurationsdatei.
+    Loads and validates the configuration file.
 
-    :return: Ein Dictionary mit den Konfigurationseinstellungen.
+    :return: A dictionary containing configuration settings.
     """
     with open("config.yaml", "r", encoding="utf-8") as file:
         config = yaml.safe_load(file)
@@ -39,10 +40,10 @@ def load_config():
 
 def init_logger(config):
     """
-    Initialisiert das Logger-System basierend auf der Konfiguration.
+    Initializes the logging system based on the configuration.
 
-    :param config: Konfigurationseinstellungen
-    :return: Logger-Objekt
+    :param config: Configuration settings
+    :return: Logger object
     """
     logger = logging.getLogger()
     logger.setLevel(
@@ -69,12 +70,12 @@ def init_logger(config):
 
 def handle_client(client_socket, client_address, request_queue, logger):
     """
-    Verarbeitet die Verbindung eines Clients.
+    Handles a client connection.
 
-    :param client_socket: Client-Socket
-    :param client_address: Adresse des Clients
-    :param request_queue: Anfragewarteschlange
-    :param logger: Logger-Objekt
+    :param client_socket: Client socket
+    :param client_address: Client's address
+    :param request_queue: Request queue
+    :param logger: Logger object
     """
     try:
         logger.info("New client connected: %s", client_address)
@@ -84,18 +85,18 @@ def handle_client(client_socket, client_address, request_queue, logger):
                 logger.info("Client disconnected: %s", client_address)
                 break
             request_queue.put((data, client_socket))
-    except Exception as exc:
+    except (socket.error, OSError) as exc:
         logger.error("Error with client %s: %s", client_address, exc)
     finally:
         client_socket.close()
 
 def process_requests(request_queue, config, logger):
     """
-    Verarbeitet Anfragen an den Modbus-Server.
+    Processes requests to the Modbus server.
 
-    :param request_queue: Anfragewarteschlange
-    :param config: Konfigurationseinstellungen
-    :param logger: Logger-Objekt
+    :param request_queue: Request queue
+    :param config: Configuration settings
+    :param logger: Logger object
     """
     while True:
         try:
@@ -122,20 +123,20 @@ def process_requests(request_queue, config, logger):
                         response = modbus_client.socket.recv(1024)
                         client_socket.sendall(response)
                         break
-                except Exception as exc:
+                except (ConnectionError, TimeoutError) as exc:
                     logger.error("Retry %d failed: %s", attempt + 1, exc)
                     time.sleep(1)
             else:
                 logger.error("Failed to connect to Modbus server after retries")
                 client_socket.close()
-        except Exception as exc:
+        except (queue.Empty, Exception) as exc:
             logger.error("Error processing request: %s", exc)
 
 def start_server(config):
     """
-    Startet den Proxy-Server.
+    Starts the proxy server.
 
-    :param config: Konfigurationseinstellungen
+    :param config: Configuration settings
     """
     logger = init_logger(config)
 
@@ -167,7 +168,7 @@ def start_server(config):
                 )
         except KeyboardInterrupt:
             logger.info("Shutting down server...")
-        except Exception as exc:
+        except (OSError, Exception) as exc:
             logger.error("Server error: %s", exc)
         finally:
             server_socket.close()
