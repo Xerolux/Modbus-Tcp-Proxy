@@ -5,7 +5,68 @@ This module implements a proxy server for Modbus TCP requests
 with a persistent connection to the Modbus server.
 """
 
-# Existing imports...
+import os
+import queue
+import threading
+import time
+import logging
+import socket
+import ipaddress
+from concurrent.futures import ThreadPoolExecutor
+import yaml
+from pymodbus.client import ModbusTcpClient
+
+
+def load_config():
+    """
+    Loads and validates the configuration file.
+
+    :return: A dictionary containing configuration settings.
+    """
+    with open("config.yaml", "r", encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+
+    try:
+        ipaddress.IPv4Address(config["Proxy"]["ServerHost"])
+    except ipaddress.AddressValueError as exc:
+        raise ValueError(f"Invalid IPv4 address: {config['Proxy']['ServerHost']}") from exc
+
+    if not 0 < config["Proxy"]["ServerPort"] < 65536:
+        raise ValueError(f"Invalid port: {config['Proxy']['ServerPort']}")
+
+    return config
+
+
+def init_logger(config):
+    """
+    Initializes the logging system based on the configuration.
+
+    :param config: Configuration settings
+    :return: Logger object
+    """
+    logger = logging.getLogger()
+    logger.setLevel(
+        getattr(
+            logging,
+            config["Logging"].get("LogLevel", "INFO").upper(),
+            logging.INFO,
+        )
+    )
+
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+    if config["Logging"].get("Enable", False):
+        log_file = config["Logging"].get("LogFile", "modbus_proxy.log")
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    return logger
+
 
 class PersistentModbusClient:
     """
@@ -62,6 +123,30 @@ class PersistentModbusClient:
             self.logger.info("Modbus connection closed.")
 
 
+def handle_client(client_socket, client_address, request_queue, logger):
+    """
+    Handles a client connection.
+
+    :param client_socket: Client socket
+    :param client_address: Client's address
+    :param request_queue: Request queue
+    :param logger: Logger object
+    """
+    try:
+        logger.info("New client connected: %s", client_address)
+        while True:
+            data = client_socket.recv(1024)
+            if not data:  # Client closed the connection
+                logger.info("Client disconnected: %s", client_address)
+                break
+            request_queue.put((data, client_socket))
+    except (socket.error, OSError) as exc:
+        logger.error("Error with client %s: %s", client_address, exc)
+    finally:
+        client_socket.close()  # Ensure the socket is closed
+        logger.info("Socket for %s closed", client_address)
+
+
 def process_requests(request_queue, persistent_client, logger):
     """
     Processes requests to the Modbus server using a persistent connection.
@@ -73,9 +158,15 @@ def process_requests(request_queue, persistent_client, logger):
     while True:
         try:
             data, client_socket = request_queue.get()
+            if client_socket.fileno() == -1:  # Check if socket is valid
+                logger.error("Client socket is closed. Skipping request.")
+                continue
             try:
                 response = persistent_client.send_request(data)
-                client_socket.sendall(response)
+                if client_socket.fileno() != -1:  # Double-check before sending
+                    client_socket.sendall(response)
+                else:
+                    logger.warning("Client socket closed before sending response.")
             except Exception as exc:
                 logger.error("Error processing request: %s", exc)
                 client_socket.close()
@@ -129,7 +220,9 @@ def start_server(config):
         except OSError as exc:
             logger.error("Server error: %s", exc)
         finally:
+            logger.info("Closing persistent Modbus client.")
             persistent_client.close()
+            logger.info("Closing server socket.")
             server_socket.close()
 
 
@@ -145,3 +238,4 @@ if __name__ == "__main__":
         print(f"OS error: {exc}")
     except KeyboardInterrupt:
         print("Server shutdown requested by user.")
+
