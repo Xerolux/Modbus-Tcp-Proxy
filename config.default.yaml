@@ -1,13 +1,22 @@
-version: 0.0.3
+# Proxy Server Configuration
 Proxy:
-  ServerHost: 0.0.0.0
-  ServerPort: 5020
+  ServerHost: "0.0.0.0"    # IP-Adresse, auf der der Proxy lauscht
+  ServerPort: 502          # Port, auf dem der Proxy lauscht
+
+# Modbus Server Configuration
 ModbusServer:
-  ModbusServerHost: 192.168.178.198
-  ModbusServerPort: 1502
-  ConnectionTimeout: 10
-  DelayAfterConnection: 0.5
+  ModbusServerHost: "192.168.1.100"  # Zieladresse des Modbus-Servers
+  ModbusServerPort: 502             # Zielport des Modbus-Servers
+  ConnectionTimeout: 10             # Timeout für Verbindungsaufbau in Sekunden
+  DelayAfterConnection: 0.5         # Verzögerung nach erfolgreichem Verbindungsaufbau (Sekunden)
+
+# Logging Configuration
 Logging:
-  Enable: false
-  LogFile: /var/log/modbus_proxy.log
-  LogLevel: INFO
+  Enable: True                      # Aktiviert oder deaktiviert das Logging
+  LogLevel: "INFO"                  # Log-Level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  LogFile: "modbus_proxy.log"       # Pfad zur Logdatei (optional)
+
+# Additional Server Configuration
+Server:
+  MaxQueueSize: 100                 # Maximale Warteschlangengröße für eingehende Anfragen
+  MaxWorkers: 8                     # Maximale Anzahl gleichzeitiger Threads im ThreadPool
