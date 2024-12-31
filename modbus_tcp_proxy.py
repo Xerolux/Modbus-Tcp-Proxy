@@ -57,7 +57,9 @@ def init_logger(config):
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
     if config["Logging"].get("Enable", False):
-        file_handler = logging.FileHandler(config["Logging"].get("LogFile", "modbus_proxy.log"))
+        file_handler = logging.FileHandler(
+            config["Logging"].get("LogFile", "modbus_proxy.log")
+        )
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
@@ -85,7 +87,9 @@ class PersistentModbusClient:
         while not self.client or not self.client.is_socket_open():
             try:
                 self.client = ModbusTcpClient(
-                    host=self.config.host, port=self.config.port, timeout=self.config.timeout
+                    host=self.config.host,
+                    port=self.config.port,
+                    timeout=self.config.timeout,
                 )
                 if self.client.connect():
                     self.logger.info("Successfully connected to Modbus server.")
@@ -202,14 +206,20 @@ def start_server(config):
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.bind((config["Proxy"]["ServerHost"], config["Proxy"]["ServerPort"]))
         server_socket.listen(5)
-        logger.info("Proxy server listening on %s:%d", config["Proxy"]["ServerHost"], config["Proxy"]["ServerPort"])
+        logger.info(
+            "Proxy server listening on %s:%d",
+            config["Proxy"]["ServerHost"],
+            config["Proxy"]["ServerPort"],
+        )
 
         executor.submit(process_requests, request_queue, persistent_client, logger)
 
         try:
             while True:
                 client_socket, client_address = server_socket.accept()
-                executor.submit(handle_client, client_socket, client_address, request_queue, logger)
+                executor.submit(
+                    handle_client, client_socket, client_address, request_queue, logger
+                )
         except KeyboardInterrupt:
             logger.info("Shutting down server...")
         except OSError as exc:
@@ -228,7 +238,9 @@ def parse_arguments():
     :return: Parsed arguments
     """
     parser = argparse.ArgumentParser(description="Modbus TCP Proxy Server")
-    parser.add_argument("--config", required=True, help="Path to the configuration file (YAML format)")
+    parser.add_argument(
+        "--config", required=True, help="Path to the configuration file (YAML format)"
+    )
     return parser.parse_args()
 
 
