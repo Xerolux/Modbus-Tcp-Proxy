@@ -13,68 +13,159 @@ This project provides a Modbus-TCP Proxy service that enables the management of 
 - **Operating System:** Debian 12 or Ubuntu 24
 - **Python:** Version 3.7 or newer
 
-## **Installation**
-### **Automatic Installation**
-To automatically install the Modbus-TCP Proxy, run the following commands:
+---
 
-```
-curl -s https://raw.githubusercontent.com/Xerolux/Modbus-Tcp-Proxy/main/install.sh | sudo bash
-```
+## Installation
 
-The script performs all necessary steps, including:
-- **Installing dependencies**
-- **Setting up a virtual environment**
-- **Configuring the Systemd service**
-- **Starting the service**
+You can install and configure the Modbus TCP Proxy using the provided `install.sh` script or manually. This guide covers both methods.
 
-### **Manual Installation**
-If you prefer manual installation, follow these steps:
 
-#### **1. Install Dependencies**
-Run the following commands to install the required packages:
-```bash
-sudo apt update
-sudo apt install -y python3 python3-pip python3-venv git bc
-```
+---
 
-#### **2. Clone Repository**
-Clone the Git repository into the `/opt/Modbus-Tcp-Proxy` directory:
-```bash
-git clone https://github.com/Xerolux/Modbus-Tcp-Proxy.git /opt/Modbus-Tcp-Proxy
-```
+### Installation via `install.sh`
 
-#### **3. Run the Installation Script**
-Execute the installation script:
-```bash
-bash /opt/Modbus-Tcp-Proxy/install.sh
-```
-The script installs dependencies, creates a virtual environment, and sets up the Systemd service.
+1. **Run the Installation Script**:
+   ```bash
+   curl -s https://raw.githubusercontent.com/Xerolux/Modbus-Tcp-Proxy/main/install.sh | sudo bash
+   ```
+   Or download it directly:
+   [Download install.sh](https://raw.githubusercontent.com/Xerolux/Modbus-Tcp-Proxy/main/install.sh)
 
-## **Configuration**
-The configuration file is located at `config.yaml` in the `/opt/Modbus-Tcp-Proxy` directory.
+2. **Provide Configuration**:
+   Create a configuration file at `/etc/Modbus-Tcp-Proxy/config.yaml`. See the example configuration below.
 
-### **Example Configuration**
+3. **Start the Proxy Service**:
+   The script sets up a systemd service. Start it using:
+   ```bash
+   sudo systemctl start modbus_proxy.service
+   ```
+
+4. **Enable Service on Boot**:
+   ```bash
+   sudo systemctl enable modbus_proxy.service
+   ```
+
+---
+
+### Manual Installation
+
+1. **Install Dependencies**:
+   ```bash
+   sudo apt update && sudo apt install -y python3 python3-pip python3-venv git nano bc
+   ```
+
+2. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/Xerolux/Modbus-Tcp-Proxy.git /opt/Modbus-Tcp-Proxy
+   ```
+
+3. **Set Up Python Environment**:
+   ```bash
+   cd /opt/Modbus-Tcp-Proxy
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+4. **Create Configuration File**:
+   ```bash
+   sudo mkdir -p /etc/Modbus-Tcp-Proxy
+   nano /etc/Modbus-Tcp-Proxy/config.yaml
+   ```
+   Use the example configuration below.
+
+5. **Run the Proxy**:
+   ```bash
+   python3 modbus_tcp_proxy.py --config /etc/Modbus-Tcp-Proxy/config.yaml
+   ```
+
+---
+
+## Configuration File (`config.yaml`)
+
+The configuration file defines the proxy settings, logging options, and Modbus server details. Below is an example:
+
 ```yaml
-version: 0.0.4
 Proxy:
-  ServerHost: 0.0.0.0
+  ServerHost: "0.0.0.0"
   ServerPort: 5020
+
 ModbusServer:
-  ModbusServerHost: 192.168.178.196
-  ModbusServerPort: 5020
+  ModbusServerHost: "192.168.1.100"
+  ModbusServerPort: 502
   ConnectionTimeout: 10
   DelayAfterConnection: 0.5
+
 Logging:
   Enable: true
-  LogFile: /var/log/modbus_proxy.log
-  LogLevel: INFO
+  LogFile: "/var/log/modbus_proxy.log"
+  LogLevel: "INFO"
 ```
 
-- **Proxy.ServerHost**: The address the proxy binds to.
-- **Proxy.ServerPort**: The port the proxy listens on.
-- **ModbusServer.ModbusServerHost**: The target address of the Modbus server.
-- **ModbusServer.ModbusServerPort**: The target port of the Modbus server.
-- **Logging.LogFile**: The path to the log file.
+### Configuration Parameters
+
+- **Proxy**:
+  - `ServerHost`: The IP address where the proxy server listens for incoming connections.
+  - `ServerPort`: The port number for the proxy server.
+- **ModbusServer**:
+  - `ModbusServerHost`: The IP address of the Modbus server.
+  - `ModbusServerPort`: The port number of the Modbus server.
+  - `ConnectionTimeout`: Timeout in seconds for the Modbus server connection.
+  - `DelayAfterConnection`: Delay in seconds after establishing a connection.
+- **Logging**:
+  - `Enable`: Enable or disable logging.
+  - `LogFile`: Path to the log file.
+  - `LogLevel`: Logging level (e.g., DEBUG, INFO, WARNING, ERROR).
+
+---
+
+## Service Management
+
+The installation script sets up a `systemd` service named `modbus_proxy.service`. Below are common commands to manage the service:
+
+- **Start Service**:
+  ```bash
+  sudo systemctl start modbus_proxy.service
+  ```
+
+- **Stop Service**:
+  ```bash
+  sudo systemctl stop modbus_proxy.service
+  ```
+
+- **Restart Service**:
+  ```bash
+  sudo systemctl restart modbus_proxy.service
+  ```
+
+- **Enable Service on Boot**:
+  ```bash
+  sudo systemctl enable modbus_proxy.service
+  ```
+
+- **Check Service Status**:
+  ```bash
+  sudo systemctl status modbus_proxy.service
+  ```
+
+---
+
+## Logs
+
+Logs are stored at the path specified in the configuration file (default: `/var/log/modbus_proxy.log`). You can view the logs using:
+
+```bash
+sudo tail -f /var/log/modbus_proxy.log
+```
+
+---
+
+## Additional Notes
+
+- Ensure that the Python virtual environment (`venv`) is activated when running the server manually.
+- Keep the `config.yaml` file updated for any changes to the proxy or Modbus server.
+
+For further assistance, refer to the comments within the scripts or reach out to the project maintainer.
 
 ## **Libraries Used**
 This project uses the following Python libraries:
@@ -92,33 +183,6 @@ The required libraries are automatically installed via the installation script. 
 pip install -r /opt/Modbus-Tcp-Proxy/requirements.txt
 ```
 
-## **Usage**
-### **Start the Service**
-The Systemd service is automatically started after installation. To manage it manually:
-
-**Start the service:**
-```bash
-sudo systemctl start modbus_proxy.service
-```
-
-**Stop the service:**
-```bash
-sudo systemctl stop modbus_proxy.service
-```
-
-**Check service status:**
-```bash
-sudo systemctl status modbus_proxy.service
-```
-
-### **View Logs**
-Logs are located by default at `/var/log/modbus_proxy.log`.
-
-## **Update**
-The installation script automatically checks for updates in the Git repository and applies them. Simply run the installation script again:
-```bash
-bash /opt/Modbus-Tcp-Proxy/install.sh
-```
 
 ## **License**
 This project is licensed under the **MIT License**. For more details, see the [`LICENSE`](LICENSE) file.
