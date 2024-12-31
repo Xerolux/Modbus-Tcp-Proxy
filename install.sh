@@ -7,9 +7,6 @@ REPO_URL="https://github.com/Xerolux/Modbus-Tcp-Proxy.git"
 BASE_DIR="/opt/Modbus-Tcp-Proxy"
 INSTALL_SCRIPT="$BASE_DIR/install.sh"
 SERVICE_NAME="modbus_proxy.service"
-DEFAULT_CONFIG_FILE="$BASE_DIR/config.default.yaml"
-CONFIG_FILE="$BASE_DIR/config.yaml"
-MERGE_SCRIPT="$BASE_DIR/merge_config.py"
 VERSION_FILE="$BASE_DIR/VERSION"
 
 # Function: Determine the local IP address
@@ -56,54 +53,13 @@ restart_service() {
 # Display current version and host information
 display_info() {
     local version
-    local proxy_port
     local_ip=$(get_local_ip)
 
     version=$(cat "$VERSION_FILE")
-    proxy_port=$(grep -Po '(?<=ServerPort: ).*' "$CONFIG_FILE" | head -1)
-
     echo "Update / Start / Install successful!"
     echo "Version: $version"
-    echo "Proxy accessible at: ${local_ip}:${proxy_port}"
-}
-
-# Configuration menu: load or edit configuration
-config_menu() {
-    echo "Checking configuration file..."
-
-    # Create a default configuration if none exists
-    if [ ! -f "$CONFIG_FILE" ]; then
-        echo "No configuration found. Creating a new configuration file based on default values..."
-        cp "$DEFAULT_CONFIG_FILE" "$CONFIG_FILE"
-    fi
-
-    # Read the current configuration
-    local current_config
-    current_config=$(cat "$CONFIG_FILE")
-
-    echo "Current configuration:"
-    echo "--------------------------------"
-    echo "$current_config"
-    echo "--------------------------------"
-
-    # Prompt the user to confirm or edit the configuration
-    echo "Do you want to use the current configuration? (y/n)"
-    read -r response
-    if [[ "$response" =~ ^[nN]$ ]]; then
-        echo "Opening configuration editor..."
-        nano "$CONFIG_FILE"
-    else
-        echo "The current configuration will be used."
-    fi
-
-    # Verify the configuration structure
-    local required_keys=("Proxy" "ModbusServer" "Logging" "version")
-    for key in "${required_keys[@]}"; do
-        if ! grep -q "$key:" "$CONFIG_FILE"; then
-            echo "Error: Key '$key' is missing in $CONFIG_FILE. Exiting."
-            exit 1
-        fi
-    done
+    echo "Ensure your 'config.yaml' file is set up manually in: $BASE_DIR"
+    echo "Proxy accessible at: ${local_ip}"
 }
 
 # Check for updates and re-execute the latest script version
@@ -164,9 +120,6 @@ if [ ! -f "$REQ_FILE" ]; then
     exit 1
 fi
 pip install -r "$REQ_FILE"
-
-# Open configuration menu
-config_menu
 
 # Create a systemd service file
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME"
