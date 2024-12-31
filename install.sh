@@ -67,19 +67,33 @@ display_info() {
     echo "Proxy ist erreichbar unter: ${local_ip}:${proxy_port}"
 }
 
-# Konfigurationsdatei prüfen und zusammenführen
-merge_config() {
-    if [ ! -f "$DEFAULT_CONFIG_FILE" ]; then
-        echo "Fehler: Standardkonfiguration ($DEFAULT_CONFIG_FILE) nicht gefunden."
-        exit 1
+# Konfigurationsmenü anzeigen und bearbeiten
+config_menu() {
+    echo "Prüfe Konfigurationsdatei..."
+
+    # Standardwerte laden, falls keine Konfiguration vorhanden ist
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo "Keine Konfiguration gefunden. Erstelle neue Konfigurationsdatei basierend auf den Standardwerten..."
+        cp "$DEFAULT_CONFIG_FILE" "$CONFIG_FILE"
     fi
 
-    if [ -f "$CONFIG_FILE" ]; then
-        echo "Bestehende Konfiguration gefunden. Füge fehlende Felder hinzu..."
-        python3 "$MERGE_SCRIPT"
+    # Aktuelle Konfiguration einlesen
+    local current_config
+    current_config=$(cat "$CONFIG_FILE")
+
+    echo "Aktuelle Konfiguration:"
+    echo "--------------------------------"
+    echo "$current_config"
+    echo "--------------------------------"
+
+    # Benutzer auffordern, die Werte zu übernehmen oder anzupassen
+    echo "Möchtest du die aktuelle Konfiguration übernehmen? (j/n)"
+    read -r response
+    if [[ "$response" =~ ^[nN]$ ]]; then
+        echo "Öffne Konfigurationseditor..."
+        nano "$CONFIG_FILE"
     else
-        echo "Erstelle neue Konfiguration basierend auf der Standardkonfiguration..."
-        cp "$DEFAULT_CONFIG_FILE" "$CONFIG_FILE"
+        echo "Die aktuelle Konfiguration wird übernommen."
     fi
 
     # Prüfung, ob die Konfigurationsstruktur korrekt ist
@@ -129,7 +143,7 @@ update_and_execute_latest
 echo "Starte den Installationsprozess..."
 
 # Abhängigkeiten installieren
-sudo apt update && sudo apt install -y python3 python3-pip python3-venv git bc || { echo "Fehler beim Installieren der Abhängigkeiten. Beende."; exit 1; }
+sudo apt update && sudo apt install -y python3 python3-pip python3-venv git bc nano || { echo "Fehler beim Installieren der Abhängigkeiten. Beende."; exit 1; }
 
 # Basisverzeichnis erstellen
 if [ ! -d "$BASE_DIR" ]; then
@@ -151,8 +165,8 @@ if [ ! -f "$REQ_FILE" ]; then
 fi
 pip install -r "$REQ_FILE"
 
-# Konfiguration zusammenführen und prüfen
-merge_config
+# Konfigurationsmenü aufrufen
+config_menu
 
 # Systemd-Service-Datei erstellen
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME"
@@ -166,7 +180,7 @@ ExecStart=$VENV_DIR/bin/python3 $BASE_DIR/modbus_tcp_proxy.py
 WorkingDirectory=$BASE_DIR
 Restart=always
 User=$USER
-Environment=\"PYTHONUNBUFFERED=1\"
+Environment="PYTHONUNBUFFERED=1"
 
 [Install]
 WantedBy=multi-user.target
@@ -177,3 +191,5 @@ restart_service
 
 # Version und Hostinformationen anzeigen
 display_info
+
+echo "Systemname: $(hostname)"
