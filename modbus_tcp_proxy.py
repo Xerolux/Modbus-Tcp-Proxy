@@ -14,17 +14,20 @@ import logging
 import socket
 import ipaddress
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 import yaml
 from pymodbus.client import ModbusTcpClient
 
 
+@dataclass
 class ModbusConfig:
-    """Configuration container for Modbus settings."""
-    def __init__(self, host, port, timeout, delay):
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-        self.delay = delay
+    """
+    A container for Modbus configuration settings.
+    """
+    host: str
+    port: int
+    timeout: int
+    delay: float
 
 
 def load_config(config_path):
@@ -87,9 +90,7 @@ class PersistentModbusClient:
         while not self.client or not self.client.is_socket_open():
             try:
                 self.client = ModbusTcpClient(
-                    host=self.config.host,
-                    port=self.config.port,
-                    timeout=self.config.timeout,
+                    host=self.config.host, port=self.config.port, timeout=self.config.timeout
                 )
                 if self.client.connect():
                     self.logger.info("Successfully connected to Modbus server.")
