@@ -1,8 +1,8 @@
 #!/bin/bash
 
-set -e
+set -e  # Exit the script if any command fails
 
-# Variablen
+# Variables
 REPO_URL="https://github.com/Xerolux/Modbus-Tcp-Proxy.git"
 BASE_DIR="/opt/Modbus-Tcp-Proxy"
 INSTALL_SCRIPT="$BASE_DIR/install.sh"
@@ -12,48 +12,48 @@ CONFIG_FILE="$BASE_DIR/config.yaml"
 MERGE_SCRIPT="$BASE_DIR/merge_config.py"
 VERSION_FILE="$BASE_DIR/VERSION"
 
-# Funktion: Lokale IP-Adresse ermitteln
+# Function: Determine the local IP address
 get_local_ip() {
     local_ip=$(hostname -I | awk '{print $1}')
     if [[ -z "$local_ip" ]]; then
-        echo "Konnte keine lokale IP-Adresse ermitteln. Stelle sicher, dass das Netzwerk funktioniert."
+        echo "Could not determine a local IP address. Ensure the network is working."
         exit 1
     fi
     echo "$local_ip"
 }
 
-# Prüfen auf Debian 12 oder Ubuntu 24
+# Check for Debian 12 or Ubuntu 24
 check_os() {
-    echo "Prüfe Betriebssystemversion..."
+    echo "Checking operating system version..."
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         if [[ "$ID" == "debian" && "$VERSION_ID" == "12" ]] || [[ "$ID" == "ubuntu" && "$VERSION_ID" == "24.04" ]]; then
-            echo "Betriebssystem unterstützt: $PRETTY_NAME"
+            echo "Operating system supported: $PRETTY_NAME"
         else
-            echo "Nicht unterstütztes Betriebssystem: $PRETTY_NAME"
-            echo "Dieses Skript unterstützt nur Debian 12 und Ubuntu 24."
+            echo "Unsupported operating system: $PRETTY_NAME"
+            echo "This script supports only Debian 12 and Ubuntu 24."
             exit 1
         fi
     else
-        echo "Konnte /etc/os-release nicht finden. Betriebssystemprüfung fehlgeschlagen."
+        echo "Could not find /etc/os-release. OS check failed."
         exit 1
     fi
 }
 
-# Dienst stoppen
+# Stop the service
 stop_service() {
-    echo "Stoppe $SERVICE_NAME..."
-    sudo systemctl stop "$SERVICE_NAME" || echo "$SERVICE_NAME läuft nicht."
+    echo "Stopping $SERVICE_NAME..."
+    sudo systemctl stop "$SERVICE_NAME" || echo "$SERVICE_NAME is not running."
 }
 
-# Dienst starten oder neu starten
+# Restart or start the service
 restart_service() {
-    echo "Starte $SERVICE_NAME neu..."
+    echo "Restarting $SERVICE_NAME..."
     sudo systemctl daemon-reload
     sudo systemctl restart "$SERVICE_NAME"
 }
 
-# Zeige die aktuelle Version und Host-Info
+# Display current version and host information
 display_info() {
     local version
     local proxy_port
@@ -62,96 +62,96 @@ display_info() {
     version=$(cat "$VERSION_FILE")
     proxy_port=$(grep -Po '(?<=ServerPort: ).*' "$CONFIG_FILE" | head -1)
 
-    echo "Update / Start / Install erfolgreich!"
+    echo "Update / Start / Install successful!"
     echo "Version: $version"
-    echo "Proxy ist erreichbar unter: ${local_ip}:${proxy_port}"
+    echo "Proxy accessible at: ${local_ip}:${proxy_port}"
 }
 
-# Konfigurationsmenü anzeigen und bearbeiten
+# Configuration menu: load or edit configuration
 config_menu() {
-    echo "Prüfe Konfigurationsdatei..."
+    echo "Checking configuration file..."
 
-    # Standardwerte laden, falls keine Konfiguration vorhanden ist
+    # Create a default configuration if none exists
     if [ ! -f "$CONFIG_FILE" ]; then
-        echo "Keine Konfiguration gefunden. Erstelle neue Konfigurationsdatei basierend auf den Standardwerten..."
+        echo "No configuration found. Creating a new configuration file based on default values..."
         cp "$DEFAULT_CONFIG_FILE" "$CONFIG_FILE"
     fi
 
-    # Aktuelle Konfiguration einlesen
+    # Read the current configuration
     local current_config
     current_config=$(cat "$CONFIG_FILE")
 
-    echo "Aktuelle Konfiguration:"
+    echo "Current configuration:"
     echo "--------------------------------"
     echo "$current_config"
     echo "--------------------------------"
 
-    # Benutzer auffordern, die Werte zu übernehmen oder anzupassen
-    echo "Möchtest du die aktuelle Konfiguration übernehmen? (j/n)"
+    # Prompt the user to confirm or edit the configuration
+    echo "Do you want to use the current configuration? (y/n)"
     read -r response
     if [[ "$response" =~ ^[nN]$ ]]; then
-        echo "Öffne Konfigurationseditor..."
+        echo "Opening configuration editor..."
         nano "$CONFIG_FILE"
     else
-        echo "Die aktuelle Konfiguration wird übernommen."
+        echo "The current configuration will be used."
     fi
 
-    # Prüfung, ob die Konfigurationsstruktur korrekt ist
+    # Verify the configuration structure
     local required_keys=("Proxy" "ModbusServer" "Logging" "version")
     for key in "${required_keys[@]}"; do
         if ! grep -q "$key:" "$CONFIG_FILE"; then
-            echo "Fehler: Schlüssel '$key' fehlt in $CONFIG_FILE. Beende."
+            echo "Error: Key '$key' is missing in $CONFIG_FILE. Exiting."
             exit 1
         fi
     done
 }
 
-# Überprüfen und das Skript aktualisieren
+# Check for updates and re-execute the latest script version
 update_and_execute_latest() {
     if [ "${SKIP_UPDATE_CHECK:-0}" -eq 1 ]; then
-        return  # Update-Check überspringen, wenn bereits geprüft
+        return  # Skip update check if already verified
     fi
 
-    echo "Prüfe auf die neueste Version des Installationsskripts..."
+    echo "Checking for the latest version of the installation script..."
     if [ -d "$BASE_DIR/.git" ]; then
-        echo "Aktualisiere Repository..."
+        echo "Updating repository..."
         git -C "$BASE_DIR" fetch
         git -C "$BASE_DIR" reset --hard origin/main
     else
-        echo "Klone Repository..."
+        echo "Cloning repository..."
         git clone "$REPO_URL" "$BASE_DIR"
     fi
 
-    # Prüfe, ob das Installationsskript aktualisiert wurde
+    # Check if the installation script was updated
     local current_hash new_hash
     current_hash=$(sha256sum "$INSTALL_SCRIPT" | awk '{print $1}')
     new_hash=$(git -C "$BASE_DIR" show origin/main:install.sh | sha256sum | awk '{print $1}')
 
     if [ "$current_hash" != "$new_hash" ]; then
-        echo "Installationsskript wurde aktualisiert. Starte die neue Version..."
+        echo "Installation script has been updated. Restarting the new version..."
         SKIP_UPDATE_CHECK=1 exec bash "$INSTALL_SCRIPT" "$@"
     fi
 }
 
-# Betriebssystemprüfung
+# Verify the OS
 check_os
 
-# Überprüfen und das Skript aktualisieren
+# Check for updates and re-execute the latest version if necessary
 update_and_execute_latest
 
-# Installationsprozess starten
-echo "Starte den Installationsprozess..."
+# Start installation process
+echo "Starting installation process..."
 
-# Abhängigkeiten installieren
-sudo apt update && sudo apt install -y python3 python3-pip python3-venv git bc nano || { echo "Fehler beim Installieren der Abhängigkeiten. Beende."; exit 1; }
+# Install dependencies
+sudo apt update && sudo apt install -y python3 python3-pip python3-venv git bc nano || { echo "Error installing dependencies. Exiting."; exit 1; }
 
-# Basisverzeichnis erstellen
+# Create the base directory if it doesn't exist
 if [ ! -d "$BASE_DIR" ]; then
     sudo mkdir -p "$BASE_DIR"
     sudo chown $USER:$USER "$BASE_DIR"
 fi
 
-# Python-Abhängigkeiten installieren
+# Set up Python environment and dependencies
 VENV_DIR="$BASE_DIR/venv"
 if [ ! -d "$VENV_DIR" ]; then
     python3 -m venv "$VENV_DIR"
@@ -160,15 +160,15 @@ source "$VENV_DIR/bin/activate"
 
 REQ_FILE="$BASE_DIR/requirements.txt"
 if [ ! -f "$REQ_FILE" ]; then
-    echo "requirements.txt nicht gefunden. Beende."
+    echo "requirements.txt not found. Exiting."
     exit 1
 fi
 pip install -r "$REQ_FILE"
 
-# Konfigurationsmenü aufrufen
+# Open configuration menu
 config_menu
 
-# Systemd-Service-Datei erstellen
+# Create a systemd service file
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME"
 sudo bash -c "cat << EOF > $SERVICE_FILE
 [Unit]
@@ -180,16 +180,16 @@ ExecStart=$VENV_DIR/bin/python3 $BASE_DIR/modbus_tcp_proxy.py
 WorkingDirectory=$BASE_DIR
 Restart=always
 User=$USER
-Environment="PYTHONUNBUFFERED=1"
+Environment=\"PYTHONUNBUFFERED=1\"
 
 [Install]
 WantedBy=multi-user.target
 EOF"
 
-# Dienst starten
+# Restart the service
 restart_service
 
-# Version und Hostinformationen anzeigen
+# Display version and host information
 display_info
 
-echo "Systemname: $(hostname)"
+echo "System name: $(hostname)"
