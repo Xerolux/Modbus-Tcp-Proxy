@@ -5,6 +5,7 @@ This module implements a proxy server for Modbus TCP requests
 with a persistent connection to the Modbus server.
 """
 
+import argparse
 import os
 import queue
 import threading
@@ -17,13 +18,14 @@ import yaml
 from pymodbus.client import ModbusTcpClient
 
 
-def load_config():
+def load_config(config_path):
     """
     Loads and validates the configuration file.
 
+    :param config_path: Path to the configuration file
     :return: A dictionary containing configuration settings.
     """
-    with open("config.yaml", "r", encoding="utf-8") as file:
+    with open(config_path, "r", encoding="utf-8") as file:
         config = yaml.safe_load(file)
 
     try:
@@ -76,8 +78,8 @@ class PersistentModbusClient:
         self.host = host
         self.port = port
         self.logger = logger
-        self.timeout = timeout  # Configurable connection timeout
-        self.delay = delay  # Configurable delay after connection
+        self.timeout = timeout
+        self.delay = delay
         self.client = None
 
     def connect(self):
@@ -87,7 +89,6 @@ class PersistentModbusClient:
         """
         while not self.client or not self.client.is_socket_open():
             try:
-                # Initialize ModbusTcpClient with configurable timeout
                 self.client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
                 if self.client.connect():
                     self.logger.info("Successfully connected to Modbus server.")
@@ -98,7 +99,7 @@ class PersistentModbusClient:
                     raise ConnectionError("Failed to connect to Modbus server.")
             except Exception as exc:
                 self.logger.error("Connection error: %s. Retrying immediately.", exc)
-                time.sleep(0.1)  # Short delay before immediate retry
+                time.sleep(0.1)
 
     def send_request(self, data):
         """
@@ -233,9 +234,25 @@ def start_server(config):
             server_socket.close()
 
 
+def parse_arguments():
+    """
+    Parse command-line arguments.
+
+    :return: Parsed arguments
+    """
+    parser = argparse.ArgumentParser(description="Modbus TCP Proxy Server")
+    parser.add_argument(
+        "--config", 
+        required=True, 
+        help="Path to the configuration file (YAML format)"
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    args = parse_arguments()
     try:
-        configuration = load_config()
+        configuration = load_config(args.config)
         start_server(configuration)
     except FileNotFoundError as exc:
         print(f"Configuration file not found: {exc}")
