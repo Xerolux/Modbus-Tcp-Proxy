@@ -1,3 +1,20 @@
+"""
+modbus_tcp_proxy.py
+
+This script implements a Modbus TCP Proxy Server with a persistent connection to a Modbus server. 
+The proxy facilitates communication between multiple clients and a Modbus server, 
+handling requests and responses with robust error handling and dynamic configuration options.
+
+Features:
+- Persistent connection to the Modbus server.
+- Multi-threaded request handling.
+- Configurable via a YAML configuration file.
+- Supports logging with adjustable verbosity levels.
+
+Author: [Xerolux]
+Date: [31.12.2024]
+"""
+
 import argparse
 import os
 import queue
