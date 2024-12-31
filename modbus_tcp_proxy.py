@@ -1,10 +1,3 @@
-"""
-Modbus TCP Proxy Server with Persistent Connection
-
-This module implements a proxy server for Modbus TCP requests
-with a persistent connection to the Modbus server.
-"""
-
 import argparse
 import os
 import queue
@@ -18,7 +11,6 @@ from dataclasses import dataclass
 import yaml
 from pymodbus.client import ModbusTcpClient
 
-
 @dataclass
 class ModbusConfig:
     """
@@ -28,7 +20,6 @@ class ModbusConfig:
     port: int
     timeout: int
     delay: float
-
 
 def load_config(config_path):
     """
@@ -45,7 +36,6 @@ def load_config(config_path):
         raise ValueError(f"Invalid port: {config['Proxy']['ServerPort']}")
 
     return config
-
 
 def init_logger(config):
     """
@@ -71,7 +61,6 @@ def init_logger(config):
     logger.addHandler(console_handler)
 
     return logger
-
 
 class PersistentModbusClient:
     """
@@ -127,7 +116,6 @@ class PersistentModbusClient:
             self.client.close()
             self.logger.info("Modbus connection closed.")
 
-
 def handle_client(client_socket, client_address, request_queue, logger):
     """
     Handles a client connection.
@@ -150,7 +138,6 @@ def handle_client(client_socket, client_address, request_queue, logger):
     finally:
         client_socket.close()
         logger.info("Socket for %s closed", client_address)
-
 
 def process_requests(request_queue, persistent_client, logger):
     """
@@ -177,7 +164,6 @@ def process_requests(request_queue, persistent_client, logger):
                 client_socket.close()
         except (queue.Empty, OSError) as exc:
             logger.error("Error processing queue: %s", exc)
-
 
 def start_server(config):
     """
@@ -231,7 +217,6 @@ def start_server(config):
             logger.info("Closing server socket.")
             server_socket.close()
 
-
 def parse_arguments():
     """
     Parse command-line arguments.
@@ -243,7 +228,6 @@ def parse_arguments():
         "--config", required=True, help="Path to the configuration file (YAML format)"
     )
     return parser.parse_args()
-
 
 if __name__ == "__main__":
     args = parse_arguments()
