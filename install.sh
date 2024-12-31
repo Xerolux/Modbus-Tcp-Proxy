@@ -5,6 +5,8 @@ set -e  # Exit the script if any command fails
 # Variables
 REPO_URL="https://github.com/Xerolux/Modbus-Tcp-Proxy.git"
 BASE_DIR="/opt/Modbus-Tcp-Proxy"
+CONFIG_DIR="/etc/Modbus-Tcp-Proxy"
+CONFIG_FILE="$CONFIG_DIR/config.yaml"
 INSTALL_SCRIPT="$BASE_DIR/install.sh"
 SERVICE_NAME="modbus_proxy.service"
 VERSION_FILE="$BASE_DIR/VERSION"
@@ -58,7 +60,7 @@ display_info() {
     version=$(cat "$VERSION_FILE")
     echo "Update / Start / Install successful!"
     echo "Version: $version"
-    echo "Ensure your 'config.yaml' file is set up manually in: $BASE_DIR"
+    echo "Ensure your 'config.yaml' file is set up manually in: $CONFIG_FILE"
     echo "Proxy accessible at: ${local_ip}"
 }
 
@@ -107,6 +109,19 @@ if [ ! -d "$BASE_DIR" ]; then
     sudo chown $USER:$USER "$BASE_DIR"
 fi
 
+# Ensure the configuration directory exists
+if [ ! -d "$CONFIG_DIR" ]; then
+    sudo mkdir -p "$CONFIG_DIR"
+    sudo chown $USER:$USER "$CONFIG_DIR"
+fi
+
+# Check if the configuration file exists
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "No configuration file found in $CONFIG_DIR."
+    echo "Please create a 'config.yaml' file manually in $CONFIG_DIR before starting the service."
+    exit 1
+fi
+
 # Set up Python environment and dependencies
 VENV_DIR="$BASE_DIR/venv"
 if [ ! -d "$VENV_DIR" ]; then
@@ -129,7 +144,7 @@ Description=Modbus TCP Proxy Service
 After=network.target
 
 [Service]
-ExecStart=$VENV_DIR/bin/python3 $BASE_DIR/modbus_tcp_proxy.py
+ExecStart=$VENV_DIR/bin/python3 $BASE_DIR/modbus_tcp_proxy.py --config $CONFIG_FILE
 WorkingDirectory=$BASE_DIR
 Restart=always
 User=$USER
