@@ -72,11 +72,12 @@ class PersistentModbusClient:
     """
     A wrapper class for maintaining a persistent Modbus TCP connection.
     """
-    def __init__(self, host, port, logger, retry_interval=5):
+    def __init__(self, host, port, logger, timeout=10, delay=0.5):
         self.host = host
         self.port = port
         self.logger = logger
-        self.retry_interval = retry_interval
+        self.timeout = timeout  # Configurable connection timeout
+        self.delay = delay  # Configurable delay after connection
         self.client = None
 
     def connect(self):
@@ -86,14 +87,18 @@ class PersistentModbusClient:
         """
         while not self.client or not self.client.is_socket_open():
             try:
-                self.client = ModbusTcpClient(self.host, self.port)
+                # Initialize ModbusTcpClient with configurable timeout
+                self.client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
                 if self.client.connect():
                     self.logger.info("Successfully connected to Modbus server.")
+                    if self.delay > 0:
+                        self.logger.info("Delaying for %.2f seconds after connection.", self.delay)
+                        time.sleep(self.delay)
                 else:
                     raise ConnectionError("Failed to connect to Modbus server.")
             except Exception as exc:
-                self.logger.error("Connection error: %s. Retrying in %d seconds.", exc, self.retry_interval)
-                time.sleep(self.retry_interval)
+                self.logger.error("Connection error: %s. Retrying immediately.", exc)
+                time.sleep(0.1)  # Short delay before immediate retry
 
     def send_request(self, data):
         """
@@ -189,9 +194,11 @@ def start_server(config):
     max_workers = max(4, cpu_count * 2)
 
     persistent_client = PersistentModbusClient(
-        config["ModbusServer"]["ModbusServerHost"],
-        int(config["ModbusServer"]["ModbusServerPort"]),
-        logger
+        host=config["ModbusServer"]["ModbusServerHost"],
+        port=int(config["ModbusServer"]["ModbusServerPort"]),
+        logger=logger,
+        timeout=config["ModbusServer"].get("ConnectionTimeout", 10),
+        delay=config["ModbusServer"].get("DelayAfterConnection", 0.5)
     )
     persistent_client.connect()
 
@@ -238,4 +245,3 @@ if __name__ == "__main__":
         print(f"OS error: {exc}")
     except KeyboardInterrupt:
         print("Server shutdown requested by user.")
-
