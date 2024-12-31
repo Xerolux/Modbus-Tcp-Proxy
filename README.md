@@ -6,8 +6,10 @@ This project provides a Modbus-TCP Proxy service that enables the management of 
 ## **Features**
 - **Supports Modbus-TCP communication.**
 - **Dynamic configuration management.**
-- **Automatic updates via Git.**
+- **Persistent connection to the Modbus server.**
+- **Robust error handling and automatic reconnection.**
 - **Systemd service support.**
+- **Flexible logging with multiple levels and output options.**
 
 ## **System Requirements**
 - **Operating System:** Debian 12 or Ubuntu 24
@@ -18,7 +20,6 @@ This project provides a Modbus-TCP Proxy service that enables the management of 
 ## Installation
 
 You can install and configure the Modbus TCP Proxy using the provided `install.sh` script or manually. This guide covers both methods.
-
 
 ---
 
@@ -88,7 +89,7 @@ The configuration file defines the proxy settings, logging options, and Modbus s
 ```yaml
 Proxy:
   ServerHost: "0.0.0.0"
-  ServerPort: 5020
+  ServerPort: 502
 
 ModbusServer:
   ModbusServerHost: "192.168.1.100"
@@ -100,6 +101,10 @@ Logging:
   Enable: true
   LogFile: "/var/log/modbus_proxy.log"
   LogLevel: "INFO"
+
+Server:
+  MaxQueueSize: 100
+  MaxWorkers: 8
 ```
 
 ### Configuration Parameters
@@ -116,6 +121,9 @@ Logging:
   - `Enable`: Enable or disable logging.
   - `LogFile`: Path to the log file.
   - `LogLevel`: Logging level (e.g., DEBUG, INFO, WARNING, ERROR).
+- **Server**:
+  - `MaxQueueSize`: Maximum size of the request queue.
+  - `MaxWorkers`: Maximum number of concurrent threads.
 
 ---
 
@@ -164,8 +172,7 @@ sudo tail -f /var/log/modbus_proxy.log
 
 - Ensure that the Python virtual environment (`venv`) is activated when running the server manually.
 - Keep the `config.yaml` file updated for any changes to the proxy or Modbus server.
-
-For further assistance, refer to the comments within the scripts or reach out to the project maintainer.
+- The server automatically handles reconnections to the Modbus server in case of a disconnect.
 
 ## **Libraries Used**
 This project uses the following Python libraries:
@@ -187,11 +194,11 @@ pip install -r /opt/Modbus-Tcp-Proxy/requirements.txt
 
 If you'd like to support this integration or show your appreciation, you can:
 
-<a href="https://www.buymeacoffee.com/xerolux" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
-
+<a href="https://www.buymeacoffee.com/xerolux" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;"></a>
 
 ## **License**
 This project is licensed under the **MIT License**. For more details, see the [`LICENSE`](LICENSE) file.
 
 ## **Support**
 If you have questions or encounter issues, please open an [issue on GitHub](https://github.com/Xerolux/Modbus-Tcp-Proxy/issues).
+
