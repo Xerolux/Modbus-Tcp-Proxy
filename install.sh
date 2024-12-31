@@ -11,6 +11,17 @@ INSTALL_SCRIPT="$BASE_DIR/install.sh"
 SERVICE_NAME="modbus_proxy.service"
 VERSION_FILE="$BASE_DIR/VERSION"
 
+# Check if the configuration file exists
+check_config() {
+    echo "Checking configuration file..."
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo "Error: Configuration file not found in $CONFIG_DIR."
+        echo "Please create a 'config.yaml' file manually in $CONFIG_DIR before running this script."
+        exit 1
+    fi
+    echo "Configuration file found: $CONFIG_FILE"
+}
+
 # Function: Determine the local IP address
 get_local_ip() {
     local_ip=$(hostname -I | awk '{print $1}')
@@ -60,7 +71,7 @@ display_info() {
     version=$(cat "$VERSION_FILE")
     echo "Update / Start / Install successful!"
     echo "Version: $version"
-    echo "Ensure your 'config.yaml' file is set up manually in: $CONFIG_FILE"
+    echo "Ensure your 'config.yaml' file is set up correctly in: $CONFIG_FILE"
     echo "Proxy accessible at: ${local_ip}"
 }
 
@@ -91,6 +102,9 @@ update_and_execute_latest() {
     fi
 }
 
+# Ensure the configuration file exists
+check_config
+
 # Verify the OS
 check_os
 
@@ -113,13 +127,6 @@ fi
 if [ ! -d "$CONFIG_DIR" ]; then
     sudo mkdir -p "$CONFIG_DIR"
     sudo chown $USER:$USER "$CONFIG_DIR"
-fi
-
-# Check if the configuration file exists
-if [ ! -f "$CONFIG_FILE" ]; then
-    echo "No configuration file found in $CONFIG_DIR."
-    echo "Please create a 'config.yaml' file manually in $CONFIG_DIR before starting the service."
-    exit 1
 fi
 
 # Set up Python environment and dependencies
