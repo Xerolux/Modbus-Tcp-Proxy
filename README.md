@@ -17,9 +17,8 @@ This project provides a Modbus-TCP Proxy service that enables the management of 
 ### **Automatic Installation**
 To automatically install the Modbus-TCP Proxy, run the following commands:
 
-```bash
-wget -O install.sh https://raw.githubusercontent.com/Xerolux/Modbus-Tcp-Proxy/main/install.sh
-bash install.sh
+```
+curl -s https://raw.githubusercontent.com/Xerolux/Modbus-Tcp-Proxy/main/install.sh | sudo bash
 ```
 
 The script performs all necessary steps, including:
