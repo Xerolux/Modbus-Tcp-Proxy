@@ -183,6 +183,12 @@ The required libraries are automatically installed via the installation script. 
 pip install -r /opt/Modbus-Tcp-Proxy/requirements.txt
 ```
 
+## Supporting this Integration
+
+If you'd like to support this integration or show your appreciation, you can:
+
+<a href="https://www.buymeacoffee.com/xerolux" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
 
 ## **License**
 This project is licensed under the **MIT License**. For more details, see the [`LICENSE`](LICENSE) file.
