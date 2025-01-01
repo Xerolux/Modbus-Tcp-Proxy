@@ -13,6 +13,7 @@ Author: [Xerolux]
 Date: [01.01.2025]
 """
 
+import sys
 import argparse
 import queue
 import time
