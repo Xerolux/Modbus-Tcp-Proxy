@@ -32,8 +32,3 @@ Server:
                                      # Default: 100. Change only if you expect a high number of simultaneous requests.
   MaxWorkers: 8                     # Maximum number of concurrent threads in the ThreadPool.
                                      # Default: 8. Increase this only if the hardware can handle more threads efficiently.
-
-Security:
-  EnableWhitelist: false       # Enable/Disable whitelist feature
-  WhitelistFile: "whitelist.txt" # Path to the whitelist file with allowed IPv4 addresses
-  ReadOnly: true               # If true, only read operations are allowed
