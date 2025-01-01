@@ -13,10 +13,9 @@ Author: [Xerolux]
 Date: [01.01.2025]
 """
 
+import sys
 import argparse
-import os
 import queue
-import threading
 import time
 import logging
 import socket
@@ -25,7 +24,6 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 import yaml
 from pymodbus.client import ModbusTcpClient
-import sys
 
 # Global variables for shared components
 SERVER_SOCKET = None
@@ -136,7 +134,7 @@ class PersistentModbusClient:
             self.client.close()
             self.logger.info("Modbus connection closed.")
 
-def handle_client(client_socket, client_address, request_queue, logger, security_config):
+def handle_client(client_socket, client_address, request_queue, logger):
     """
     Handle a client connection with improved error handling.
 
@@ -145,7 +143,6 @@ def handle_client(client_socket, client_address, request_queue, logger, security
         client_address (tuple): Client's IP address and port.
         request_queue (queue.Queue): Queue for client requests.
         logger (logging.Logger): Logger instance for logging.
-        security_config (dict): Security settings from the configuration.
     """
     try:
         logger.info("New client connected: %s", client_address)
@@ -160,7 +157,7 @@ def handle_client(client_socket, client_address, request_queue, logger, security
             except (ConnectionResetError, BrokenPipeError) as exc:
                 logger.error("Communication error with %s: %s", client_address, exc)
                 break
-    except Exception as exc:
+    except OSError as exc:
         logger.error("Error with client %s: %s", client_address, exc)
     finally:
         try:
@@ -233,7 +230,7 @@ def start_server(config):
             while True:
                 client_socket, client_address = SERVER_SOCKET.accept()
                 executor.submit(
-                    handle_client, client_socket, client_address, request_queue, logger, config["Security"]
+                    handle_client, client_socket, client_address, request_queue, logger
                 )
         except KeyboardInterrupt:
             logger.info("Shutting down server...")
