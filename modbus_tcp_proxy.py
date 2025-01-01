@@ -1,16 +1,16 @@
 """
-Modbus TCP Proxy Server
+Modbus TCP Proxy Server with Improved Error Handling
 
-This script implements a Modbus TCP Proxy Server with robust error handling and persistent connections.
+This script implements a Modbus TCP Proxy Server with enhanced error handling for broken connections.
 Features include:
-- Persistent Modbus server connection.
-- Multi-threaded request handling.
-- Configuration via YAML file.
-- Logging with adjustable verbosity.
-- Watchdog for monitoring connections and restarting when necessary.
+1. Persistent Modbus server connection.
+2. Multi-threaded request handling.
+3. Configuration via YAML file.
+4. Logging with adjustable verbosity.
+5. Improved handling of connection errors.
 
 Author: [Xerolux]
-Date: [31.12.2024]
+Date: [01.01.2025]
 """
 
 import argparse
@@ -25,11 +25,12 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 import yaml
 from pymodbus.client import ModbusTcpClient
+import sys
 
 # Global variables for shared components
-server_socket = None
-persistent_client = None
-watchdog = None
+SERVER_SOCKET = None
+PERSISTENT_CLIENT = None
+WATCHDOG = None
 
 @dataclass
 class ModbusConfig:
@@ -123,7 +124,7 @@ class PersistentModbusClient:
                     time.sleep(self.config.delay)
                 else:
                     raise ConnectionError("Failed to connect to Modbus server.")
-            except Exception as exc:
+            except (ConnectionError, OSError) as exc:
                 self.logger.error("Connection error: %s. Retrying...", exc)
                 time.sleep(0.5)
 
@@ -135,33 +136,42 @@ class PersistentModbusClient:
             self.client.close()
             self.logger.info("Modbus connection closed.")
 
-def handle_client(client_socket, client_address, request_queue, logger):
+def handle_client(client_socket, client_address, request_queue, logger, security_config):
     """
-    Handle a client connection.
+    Handle a client connection with improved error handling.
 
     Args:
         client_socket (socket.socket): Socket for client communication.
         client_address (tuple): Client's IP address and port.
         request_queue (queue.Queue): Queue for client requests.
         logger (logging.Logger): Logger instance for logging.
+        security_config (dict): Security settings from the configuration.
     """
     try:
         logger.info("New client connected: %s", client_address)
         while True:
-            data = client_socket.recv(1024)
-            if not data:
-                logger.info("Client disconnected: %s", client_address)
+            try:
+                data = client_socket.recv(1024)
+                if not data:
+                    logger.info("Client disconnected: %s", client_address)
+                    break
+
+                request_queue.put((data, client_socket))
+            except (ConnectionResetError, BrokenPipeError) as exc:
+                logger.error("Communication error with %s: %s", client_address, exc)
                 break
-            request_queue.put((data, client_socket))
     except Exception as exc:
         logger.error("Error with client %s: %s", client_address, exc)
     finally:
-        client_socket.close()
+        try:
+            client_socket.close()
+        except OSError as exc:
+            logger.error("Error closing socket for %s: %s", client_address, exc)
         logger.info("Socket for %s closed", client_address)
 
 def process_requests(request_queue, persistent_client, logger):
     """
-    Process requests to the Modbus server using a persistent connection.
+    Process requests with enhanced error handling.
 
     Args:
         request_queue (queue.Queue): Queue for client requests.
@@ -171,93 +181,20 @@ def process_requests(request_queue, persistent_client, logger):
     while True:
         try:
             data, client_socket = request_queue.get()
-            if client_socket.fileno() == -1:
+            if client_socket.fileno() == -1:  # Check if socket is still valid
                 logger.error("Client socket is closed. Skipping request.")
                 continue
+
             try:
                 persistent_client.connect()
                 client_socket.sendall(data)
-            except Exception as exc:
+            except (BrokenPipeError, ConnectionResetError) as exc:
                 logger.error("Error processing request: %s", exc)
                 client_socket.close()
+        except queue.Empty:
+            logger.error("Queue is empty. Skipping request.")
         except Exception as exc:
-            logger.error("Error processing queue: %s", exc)
-
-class ModbusWatchdog(threading.Thread):
-    """Thread-based watchdog for monitoring Modbus connectivity."""
-
-    def __init__(self, persistent_client, max_retries, restart_callback, logger):
-        """
-        Initialize the Modbus Watchdog.
-
-        Args:
-            persistent_client (PersistentModbusClient): Modbus client instance.
-            max_retries (int): Maximum retries before restart.
-            restart_callback (function): Callback to restart the proxy.
-            logger (logging.Logger): Logger instance for logging.
-        """
-        super().__init__()
-        self.persistent_client = persistent_client
-        self.max_retries = max_retries
-        self.restart_callback = restart_callback
-        self.logger = logger
-        self.stop_event = threading.Event()
-
-    def run(self):
-        """
-        Main loop for monitoring Modbus connection and triggering restarts.
-        """
-        retries = 0
-        while not self.stop_event.is_set():
-            try:
-                if self.persistent_client.client and self.persistent_client.client.is_socket_open():
-                    self.logger.info("Watchdog: Modbus connection is active.")
-                    retries = 0
-                else:
-                    retries += 1
-                    self.logger.warning(
-                        "Watchdog: Modbus connection failed. Attempt %d of %d",
-                        retries,
-                        self.max_retries,
-                    )
-                    self.persistent_client.connect()
-
-                if retries >= self.max_retries:
-                    self.logger.error("Watchdog: Max retries reached. Restarting.")
-                    self.restart_callback()
-                    retries = 0
-            except Exception as exc:
-                self.logger.error("Watchdog error: %s", exc)
-
-            time.sleep(5)
-
-    def stop(self):
-        """
-        Stop the watchdog thread.
-        """
-        self.stop_event.set()
-
-def restart_proxy():
-    """
-    Restart the proxy application.
-    """
-    logging.info("Restarting the proxy...")
-    cleanup_resources()
-    os.execv(sys.executable, ['python'] + sys.argv)
-
-def cleanup_resources():
-    """
-    Cleanup resources such as sockets and connections before restarting.
-    """
-    logging.info("Cleaning up resources...")
-    global server_socket, persistent_client, watchdog
-    if watchdog:
-        watchdog.stop()
-    if persistent_client:
-        persistent_client.close()
-    if server_socket:
-        server_socket.close()
-        logging.info("Server socket closed.")
+            logger.error("Unexpected error processing queue: %s", exc)
 
 def start_server(config):
     """
@@ -266,7 +203,7 @@ def start_server(config):
     Args:
         config (dict): Configuration settings.
     """
-    global server_socket, persistent_client, watchdog
+    global SERVER_SOCKET, PERSISTENT_CLIENT
 
     logger = init_logger(config)
     request_queue = queue.Queue()
@@ -278,42 +215,34 @@ def start_server(config):
         delay=config["ModbusServer"].get("DelayAfterConnection", 0.5),
     )
 
-    persistent_client = PersistentModbusClient(modbus_config, logger)
-    persistent_client.connect()
-
-    watchdog = ModbusWatchdog(
-        persistent_client=persistent_client,
-        max_retries=3,
-        restart_callback=restart_proxy,
-        logger=logger,
-    )
-    watchdog.start()
+    PERSISTENT_CLIENT = PersistentModbusClient(modbus_config, logger)
+    PERSISTENT_CLIENT.connect()
 
     with ThreadPoolExecutor(max_workers=10) as executor:
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server_socket.bind((config["Proxy"]["ServerHost"], config["Proxy"]["ServerPort"]))
-        server_socket.listen(5)
+        SERVER_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        SERVER_SOCKET.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        SERVER_SOCKET.bind((config["Proxy"]["ServerHost"], config["Proxy"]["ServerPort"]))
+        SERVER_SOCKET.listen(5)
         logger.info(
             "Proxy server listening on %s:%d",
             config["Proxy"]["ServerHost"],
             config["Proxy"]["ServerPort"],
         )
 
-        executor.submit(process_requests, request_queue, persistent_client, logger)
-
         try:
             while True:
-                client_socket, client_address = server_socket.accept()
+                client_socket, client_address = SERVER_SOCKET.accept()
                 executor.submit(
-                    handle_client, client_socket, client_address, request_queue, logger
+                    handle_client, client_socket, client_address, request_queue, logger, config["Security"]
                 )
         except KeyboardInterrupt:
             logger.info("Shutting down server...")
         except Exception as exc:
             logger.error("Server error: %s", exc)
         finally:
-            cleanup_resources()
+            if SERVER_SOCKET:
+                SERVER_SOCKET.close()
+                logger.info("Server socket closed.")
 
 def parse_arguments():
     """
@@ -341,5 +270,3 @@ if __name__ == "__main__":
         print(f"OS error: {exc}")
     except KeyboardInterrupt:
         print("Server shutdown requested by user.")
-    finally:
-        cleanup_resources()
