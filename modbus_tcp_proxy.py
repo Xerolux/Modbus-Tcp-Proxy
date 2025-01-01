@@ -189,7 +189,7 @@ def process_requests(request_queue, persistent_client, logger):
                 client_socket.close()
         except queue.Empty:
             logger.error("Queue is empty. Skipping request.")
-        except OSError as exc:
+        except Exception as exc:
             logger.error("Unexpected error processing queue: %s", exc)
 
 def start_server(config):
@@ -233,7 +233,7 @@ def start_server(config):
                 )
         except KeyboardInterrupt:
             logger.info("Shutting down server...")
-        except OSError as exc:
+        except Exception as exc:
             logger.error("Server error: %s", exc)
         finally:
             if SERVER_SOCKET:
