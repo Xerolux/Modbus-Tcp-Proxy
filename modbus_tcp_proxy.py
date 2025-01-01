@@ -1,13 +1,16 @@
 """
-Modbus TCP Proxy Server with Improved Error Handling
+Modbus TCP Proxy Server with Whitelist and Read/Write Control
 
-This script implements a Modbus TCP Proxy Server with enhanced error handling for broken connections.
+This script implements a Modbus TCP Proxy Server with enhanced error handling, whitelist for clients, and 
+optional Read/Write control.
+
 Features include:
 1. Persistent Modbus server connection.
 2. Multi-threaded request handling.
 3. Configuration via YAML file.
 4. Logging with adjustable verbosity.
-5. Improved handling of connection errors.
+5. Whitelist for allowed clients.
+6. Optional Read-Only or Read/Write control.
 
 Author: [Xerolux]
 Date: [01.01.2025]
@@ -28,6 +31,7 @@ from pymodbus.client import ModbusTcpClient
 SERVER_SOCKET = None
 PERSISTENT_CLIENT = None
 WATCHDOG = None
+WHITELIST = set()
 
 @dataclass
 class ModbusConfig:
@@ -36,6 +40,7 @@ class ModbusConfig:
     port: int
     timeout: int
     delay: float
+    read_only: bool
 
 def load_config(config_path):
     """
@@ -59,6 +64,39 @@ def load_config(config_path):
         raise ValueError(f"Invalid port: {config['Proxy']['ServerPort']}")
 
     return config
+
+def load_whitelist(whitelist_file):
+    """
+    Load the whitelist of allowed IPv4 addresses from a file.
+
+    Args:
+        whitelist_file (str): Path to the whitelist file.
+
+    Returns:
+        set: A set of allowed IPv4 addresses.
+    """
+    try:
+        with open(whitelist_file, "r", encoding="utf-8") as file:
+            addresses = {line.strip() for line in file if line.strip()}
+            for ip in addresses:
+                ipaddress.IPv4Address(ip)
+            return addresses
+    except Exception as exc:
+        logging.error("Failed to load whitelist: %s", exc)
+        return set()
+
+def is_client_allowed(client_address):
+    """
+    Check if the client is allowed to connect based on the whitelist.
+
+    Args:
+        client_address (tuple): Client's IP address and port.
+
+    Returns:
+        bool: True if the client is allowed, False otherwise.
+    """
+    client_ip = client_address[0]
+    return client_ip in WHITELIST
 
 def init_logger(config):
     """
@@ -133,7 +171,24 @@ class PersistentModbusClient:
             self.client.close()
             self.logger.info("Modbus connection closed.")
 
-def handle_client(client_socket, client_address, request_queue, logger):
+def is_read_request(data):
+    """
+    Check if the Modbus request is a read operation.
+
+    Args:
+        data (bytes): Modbus request data.
+
+    Returns:
+        bool: True if the request is a read operation, False otherwise.
+    """
+    READ_FUNCTION_CODES = {3, 4}  # Function codes for read operations
+    try:
+        function_code = data[7]  # Function code is the 8th byte in the Modbus TCP request
+        return function_code in READ_FUNCTION_CODES
+    except IndexError:
+        return False
+
+def handle_client(client_socket, client_address, request_queue, logger, security_config):
     """
     Handle a client connection with improved error handling.
 
@@ -142,7 +197,13 @@ def handle_client(client_socket, client_address, request_queue, logger):
         client_address (tuple): Client's IP address and port.
         request_queue (queue.Queue): Queue for client requests.
         logger (logging.Logger): Logger instance for logging.
+        security_config (dict): Security settings from the configuration.
     """
+    if security_config["EnableWhitelist"] and not is_client_allowed(client_address):
+        logger.warning("Unauthorized client rejected: %s", client_address[0])
+        client_socket.close()
+        return
+
     try:
         logger.info("New client connected: %s", client_address)
         while True:
@@ -151,6 +212,11 @@ def handle_client(client_socket, client_address, request_queue, logger):
                 if not data:
                     logger.info("Client disconnected: %s", client_address)
                     break
+
+                # Enforce read-only policy if configured
+                if security_config["ReadOnly"] and not is_read_request(data):
+                    logger.warning("Write request blocked from client: %s", client_address)
+                    continue
 
                 request_queue.put((data, client_socket))
             except (ConnectionResetError, BrokenPipeError) as exc:
@@ -199,16 +265,21 @@ def start_server(config):
     Args:
         config (dict): Configuration settings.
     """
-    global SERVER_SOCKET, PERSISTENT_CLIENT
+    global SERVER_SOCKET, PERSISTENT_CLIENT, WHITELIST
 
     logger = init_logger(config)
     request_queue = queue.Queue()
+
+    if config["Security"]["EnableWhitelist"]:
+        WHITELIST = load_whitelist(config["Security"]["WhitelistFile"])
+        logger.info("Whitelist loaded with %d allowed addresses.", len(WHITELIST))
 
     modbus_config = ModbusConfig(
         host=config["ModbusServer"]["ModbusServerHost"],
         port=int(config["ModbusServer"]["ModbusServerPort"]),
         timeout=config["ModbusServer"].get("ConnectionTimeout", 10),
         delay=config["ModbusServer"].get("DelayAfterConnection", 0.5),
+        read_only=config["Security"].get("ReadOnly", False),
     )
 
     PERSISTENT_CLIENT = PersistentModbusClient(modbus_config, logger)
@@ -229,7 +300,7 @@ def start_server(config):
             while True:
                 client_socket, client_address = SERVER_SOCKET.accept()
                 executor.submit(
-                    handle_client, client_socket, client_address, request_queue, logger
+                    handle_client, client_socket, client_address, request_queue, logger, config["Security"]
                 )
         except KeyboardInterrupt:
             logger.info("Shutting down server...")
