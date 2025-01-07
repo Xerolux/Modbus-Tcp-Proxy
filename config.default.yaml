@@ -1,34 +1,14 @@
-# Proxy Server Configuration
 Proxy:
-  ServerHost: "0.0.0.0"    # The IP address where the proxy listens for incoming requests.
-                           # Default: "0.0.0.0" means the proxy listens on all network interfaces.
-                           # Change this only if you want to restrict the proxy to a specific IP address.
-  ServerPort: 502          # The port where the proxy listens for connections.
-                           # Default: 502 (standard Modbus-TCP port). Change only if a different port is required.
+  ServerHost: "127.0.0.1"      # Die IP-Adresse, auf der der Proxy-Server lauscht
+  ServerPort: 502              # Der Port, auf dem der Proxy-Server lauscht
 
-# Modbus Server Configuration
 ModbusServer:
-  ModbusServerHost: "192.168.1.100"  # The target address of the Modbus server.
-                                     # Default: Example address. Update this to the actual IP address of your server.
-  ModbusServerPort: 502             # The target port of the Modbus server.
-                                     # Default: 502 (standard Modbus-TCP port). Change only if the server listens on another port.
-  ConnectionTimeout: 10             # Timeout in seconds for establishing a connection.
-                                     # Default: 10 seconds. Change only if the connection should be established faster or slower.
-  DelayAfterConnection: 0.5         # Delay after a successful connection is established (in seconds).
-                                     # Default: 0.5 seconds. Change only if the Modbus server requires a longer delay.
+  ModbusServerHost: "192.168.1.10"  # Die IP-Adresse des Modbus-Servers
+  ModbusServerPort: 502             # Der Port des Modbus-Servers
+  ConnectionTimeout: 10             # Timeout für die Modbus-Verbindung in Sekunden
+  DelayAfterConnection: 0.5         # Verzögerung nach erfolgreicher Verbindung in Sekunden
 
-# Logging Configuration
 Logging:
-  Enable: True                      # Enable or disable logging.
-                                     # Default: True (enabled). Change to False if no logs should be generated.
-  LogLevel: "INFO"                  # Logging level for output (DEBUG, INFO, WARNING, ERROR, CRITICAL).
-                                     # Default: INFO. Change to DEBUG for more detailed logs or ERROR for minimal output.
-  LogFile: "modbus_proxy.log"       # Path to the log file.
-                                     # Default: "modbus_proxy.log". Can be adjusted to store logs elsewhere.
-
-# Additional Server Configuration
-Server:
-  MaxQueueSize: 100                 # Maximum queue size for incoming requests.
-                                     # Default: 100. Change only if you expect a high number of simultaneous requests.
-  MaxWorkers: 8                     # Maximum number of concurrent threads in the ThreadPool.
-                                     # Default: 8. Increase this only if the hardware can handle more threads efficiently.
+  Enable: true                     # Aktiviert die Protokollierung
+  LogFile: "modbus_proxy.log"      # Pfad zur Protokolldatei
+  LogLevel: "INFO"                 # Protokollierungsstufe (DEBUG, INFO, WARNING, ERROR, CRITICAL)
