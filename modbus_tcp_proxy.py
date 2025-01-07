@@ -12,9 +12,8 @@ Features:
 - Supports logging with adjustable verbosity levels.
 
 Author: [Xerolux]
-Date: [31.12.2024]
+Date: [07.01.2025]
 """
-
 import argparse
 import os
 import queue
@@ -23,9 +22,11 @@ import time
 import logging
 import socket
 import ipaddress
+import signal
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 import yaml
+from cerberus import Validator
 from pymodbus.client import ModbusTcpClient
 
 @dataclass
@@ -38,6 +39,50 @@ class ModbusConfig:
     timeout: int
     delay: float
 
+def validate_config(config):
+    """
+    Validates the configuration file against a defined schema.
+
+    :param config: Configuration dictionary
+    :return: Validated configuration
+    """
+    schema = {
+        'Proxy': {
+            'type': 'dict',
+            'schema': {
+                'ServerHost': {'type': 'string', 'required': True},
+                'ServerPort': {'type': 'integer', 'min': 1, 'max': 65535, 'required': True}
+            }
+        },
+        'ModbusServer': {
+            'type': 'dict',
+            'schema': {
+                'ModbusServerHost': {'type': 'string', 'required': True},
+                'ModbusServerPort': {'type': 'integer', 'min': 1, 'max': 65535, 'required': True},
+                'ConnectionTimeout': {'type': 'integer', 'min': 1, 'default': 10},
+                'DelayAfterConnection': {'type': 'float', 'min': 0.0, 'default': 0.5}
+            }
+        },
+        'Logging': {
+            'type': 'dict',
+            'schema': {
+                'Enable': {'type': 'boolean', 'default': False},
+                'LogFile': {'type': 'string', 'required': False},
+                'LogLevel': {
+                    'type': 'string',
+                    'allowed': ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                    'default': 'INFO'
+                }
+            }
+        }
+    }
+
+    validator = Validator(schema)
+    if not validator.validate(config):
+        raise ValueError(f"Configuration validation failed: {validator.errors}")
+
+    return validator.normalized(config)
+
 def load_config(config_path):
     """
     Loads and validates the configuration file.
@@ -48,11 +93,7 @@ def load_config(config_path):
     with open(config_path, "r", encoding="utf-8") as file:
         config = yaml.safe_load(file)
 
-    ipaddress.IPv4Address(config["Proxy"]["ServerHost"])
-    if not 0 < config["Proxy"]["ServerPort"] < 65536:
-        raise ValueError(f"Invalid port: {config['Proxy']['ServerPort']}")
-
-    return config
+    return validate_config(config)
 
 def init_logger(config):
     """
@@ -84,15 +125,23 @@ class PersistentModbusClient:
     A wrapper class for maintaining a persistent Modbus TCP connection.
     """
     def __init__(self, modbus_config, logger):
+        """
+        Initializes the PersistentModbusClient.
+
+        :param modbus_config: ModbusConfig object with connection settings
+        :param logger: Logger object
+        """
         self.config = modbus_config
         self.logger = logger
         self.client = None
+        self.retries = 5
 
     def connect(self):
         """
         Establish a connection to the Modbus server.
-        Reconnect if the connection is lost.
+        Reconnect if the connection is lost, with retry logic.
         """
+        attempts = 0
         while not self.client or not self.client.is_socket_open():
             try:
                 self.client = ModbusTcpClient(
@@ -101,10 +150,15 @@ class PersistentModbusClient:
                 if self.client.connect():
                     self.logger.info("Successfully connected to Modbus server.")
                     time.sleep(self.config.delay)
+                    return
                 else:
                     raise ConnectionError("Failed to connect to Modbus server.")
             except (socket.error, OSError) as exc:
-                self.logger.error("Connection error: %s. Retrying...", exc)
+                attempts += 1
+                self.logger.error("Connection error: %s. Attempt %d of %d.", exc, attempts, self.retries)
+                if attempts >= self.retries:
+                    self.logger.critical("Max retries reached. Giving up.")
+                    raise
                 time.sleep(0.1)
 
     def send_request(self, data):
@@ -166,7 +220,7 @@ def process_requests(request_queue, persistent_client, logger):
     """
     while True:
         try:
-            data, client_socket = request_queue.get()
+            data, client_socket = request_queue.get(timeout=1)
             if client_socket.fileno() == -1:
                 logger.error("Client socket is closed. Skipping request.")
                 continue
@@ -179,8 +233,8 @@ def process_requests(request_queue, persistent_client, logger):
             except socket.error as exc:
                 logger.error("Error processing request: %s", exc)
                 client_socket.close()
-        except (queue.Empty, OSError) as exc:
-            logger.error("Error processing queue: %s", exc)
+        except queue.Empty:
+            continue
 
 def start_server(config):
     """
@@ -213,8 +267,17 @@ def start_server(config):
         logger.info(
             "Proxy server listening on %s:%d",
             config["Proxy"]["ServerHost"],
-            config["Proxy"]["ServerPort"],
+            config["Proxy"]["ServerPort"]
         )
+
+        def shutdown_handler(signum, frame):
+            logger.info("Received shutdown signal. Closing resources...")
+            server_socket.close()
+            persistent_client.close()
+            exit(0)
+
+        signal.signal(signal.SIGINT, shutdown_handler)
+        signal.signal(signal.SIGTERM, shutdown_handler)
 
         executor.submit(process_requests, request_queue, persistent_client, logger)
 
@@ -224,8 +287,6 @@ def start_server(config):
                 executor.submit(
                     handle_client, client_socket, client_address, request_queue, logger
                 )
-        except KeyboardInterrupt:
-            logger.info("Shutting down server...")
         except OSError as exc:
             logger.error("Server error: %s", exc)
         finally:
