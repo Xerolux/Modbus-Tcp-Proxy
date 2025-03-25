@@ -1,12 +1,16 @@
 Proxy:
   ServerHost: "127.0.0.1"      # Die IP-Adresse, auf der der Proxy-Server lauscht
   ServerPort: 502              # Der Port, auf dem der Proxy-Server lauscht
+  AllowedIPs: []               # Liste der erlaubten IP-Adressen (leer = alle erlaubt)
+  MaxConnections: 100          # Maximale Anzahl gleichzeitiger Verbindungen
 
 ModbusServer:
   ModbusServerHost: "192.168.1.10"  # Die IP-Adresse des Modbus-Servers
   ModbusServerPort: 502             # Der Port des Modbus-Servers
   ConnectionTimeout: 10             # Timeout für die Modbus-Verbindung in Sekunden
   DelayAfterConnection: 0.5         # Verzögerung nach erfolgreicher Verbindung in Sekunden
+  MaxRetries: 5                     # Maximale Anzahl von Verbindungsversuchen
+  MaxBackoff: 30.0                  # Maximale Wartezeit zwischen Verbindungsversuchen in Sekunden
 
 Logging:
   Enable: true                     # Aktiviert die Protokollierung
