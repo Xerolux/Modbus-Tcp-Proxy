@@ -1,19 +1,3 @@
-"""
-modbus_tcp_proxy.py
-
-This script implements a Modbus TCP Proxy Server with a persistent connection to a Modbus server. 
-The proxy facilitates communication between multiple clients and a Modbus server, 
-handling requests and responses with robust error handling and dynamic configuration options.
-
-Features:
-- Persistent connection to the Modbus server.
-- Multi-threaded request handling.
-- Configurable via a YAML configuration file.
-- Supports logging with adjustable verbosity levels.
-
-Author: [Xerolux]
-Date: [07.01.2025]
-"""
 import argparse
 import os
 import queue
@@ -31,21 +15,12 @@ from pymodbus.client import ModbusTcpClient
 
 @dataclass
 class ModbusConfig:
-    """
-    A container for Modbus configuration settings.
-    """
     host: str
     port: int
     timeout: int
     delay: float
 
 def validate_config(config):
-    """
-    Validates the configuration file against a defined schema.
-
-    :param config: Configuration dictionary
-    :return: Validated configuration
-    """
     schema = {
         'Proxy': {
             'type': 'dict',
@@ -80,37 +55,20 @@ def validate_config(config):
     validator = Validator(schema)
     if not validator.validate(config):
         raise ValueError(f"Configuration validation failed: {validator.errors}")
-
     return validator.normalized(config)
 
 def load_config(config_path):
-    """
-    Loads and validates the configuration file.
-
-    :param config_path: Path to the configuration file
-    :return: A dictionary containing configuration settings
-    """
     with open(config_path, "r", encoding="utf-8") as file:
         config = yaml.safe_load(file)
-
     return validate_config(config)
 
 def init_logger(config):
-    """
-    Initializes the logging system based on the configuration.
-
-    :param config: Configuration settings
-    :return: Logger object
-    """
     logger = logging.getLogger()
     logger.setLevel(config["Logging"].get("LogLevel", "INFO").upper())
-
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
     if config["Logging"].get("Enable", False):
-        file_handler = logging.FileHandler(
-            config["Logging"].get("LogFile", "modbus_proxy.log")
-        )
+        file_handler = logging.FileHandler(config["Logging"].get("LogFile", "modbus_proxy.log"))
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
@@ -121,31 +79,20 @@ def init_logger(config):
     return logger
 
 class PersistentModbusClient:
-    """
-    A wrapper class for maintaining a persistent Modbus TCP connection.
-    """
     def __init__(self, modbus_config, logger):
-        """
-        Initializes the PersistentModbusClient.
-
-        :param modbus_config: ModbusConfig object with connection settings
-        :param logger: Logger object
-        """
         self.config = modbus_config
         self.logger = logger
         self.client = None
         self.retries = 5
 
     def connect(self):
-        """
-        Establish a connection to the Modbus server.
-        Reconnect if the connection is lost, with retry logic.
-        """
         attempts = 0
         while not self.client or not self.client.is_socket_open():
             try:
                 self.client = ModbusTcpClient(
-                    host=self.config.host, port=self.config.port, timeout=self.config.timeout
+                    host=self.config.host,
+                    port=self.config.port,
+                    timeout=self.config.timeout
                 )
                 if self.client.connect():
                     self.logger.info("Successfully connected to Modbus server.")
@@ -162,63 +109,63 @@ class PersistentModbusClient:
                 time.sleep(0.1)
 
     def send_request(self, data):
-        """
-        Send a request to the Modbus server and return the response.
-
-        :param data: Request data to be sent
-        :return: Response data received from the server
-        """
         if not self.client or not self.client.is_socket_open():
             self.connect()
 
         try:
+            self.logger.debug("Sending request: %s", data.hex())
             self.client.socket.sendall(data)
-            return self.client.socket.recv(1024)
+
+            # Read response in a loop to handle large payloads
+            response = b""
+            self.client.socket.settimeout(self.config.timeout)
+            while True:
+                try:
+                    chunk = self.client.socket.recv(1024)
+                    if not chunk:
+                        break
+                    response += chunk
+                    if len(chunk) < 1024:
+                        break  # Likely end of message
+                except socket.timeout:
+                    self.logger.warning("Socket recv timeout reached.")
+                    break
+
+            self.logger.debug("Received response: %s", response.hex())
+            return response
+
         except socket.error as exc:
             self.logger.error("Communication error: %s", exc)
             self.connect()
             raise
 
     def close(self):
-        """
-        Close the Modbus connection.
-        """
         if self.client:
             self.client.close()
             self.logger.info("Modbus connection closed.")
 
 def handle_client(client_socket, client_address, request_queue, logger):
-    """
-    Handles a client connection.
-
-    :param client_socket: Client socket
-    :param client_address: Client's address
-    :param request_queue: Request queue
-    :param logger: Logger object
-    """
     try:
         logger.info("New client connected: %s", client_address)
+        client_socket.settimeout(60)
         while True:
-            data = client_socket.recv(1024)
-            if not data:
-                logger.info("Client disconnected: %s", client_address)
+            try:
+                data = client_socket.recv(1024)
+                if not data:
+                    logger.info("Client disconnected: %s", client_address)
+                    break
+                request_queue.put((data, client_socket))
+            except socket.timeout:
+                logger.warning("Client %s timeout, disconnecting.", client_address)
                 break
-            request_queue.put((data, client_socket))
     except (socket.error, OSError) as exc:
         logger.error("Error with client %s: %s", client_address, exc)
     finally:
         client_socket.close()
         logger.info("Socket for %s closed", client_address)
 
-def process_requests(request_queue, persistent_client, logger):
-    """
-    Processes requests to the Modbus server using a persistent connection.
-
-    :param request_queue: Request queue
-    :param persistent_client: PersistentModbusClient instance
-    :param logger: Logger object
-    """
-    while True:
+def process_requests(request_queue, persistent_client, logger, stop_event):
+    while not stop_event.is_set():
         try:
             data, client_socket = request_queue.get(timeout=1)
             if client_socket.fileno() == -1:
@@ -237,15 +184,11 @@ def process_requests(request_queue, persistent_client, logger):
             continue
 
 def start_server(config):
-    """
-    Starts the proxy server with persistent Modbus connection.
-
-    :param config: Configuration settings
-    """
     logger = init_logger(config)
 
     max_queue_size = max(10, min(1000, threading.active_count() * 10))
     request_queue = queue.Queue(maxsize=max_queue_size)
+    stop_event = threading.Event()
 
     cpu_count = os.cpu_count() or 4
     max_workers = max(4, cpu_count * 2)
@@ -264,14 +207,11 @@ def start_server(config):
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.bind((config["Proxy"]["ServerHost"], config["Proxy"]["ServerPort"]))
         server_socket.listen(5)
-        logger.info(
-            "Proxy server listening on %s:%d",
-            config["Proxy"]["ServerHost"],
-            config["Proxy"]["ServerPort"]
-        )
+        logger.info("Proxy server listening on %s:%d", config["Proxy"]["ServerHost"], config["Proxy"]["ServerPort"])
 
         def shutdown_handler(signum, frame):
             logger.info("Received shutdown signal. Closing resources...")
+            stop_event.set()
             server_socket.close()
             persistent_client.close()
             exit(0)
@@ -279,14 +219,16 @@ def start_server(config):
         signal.signal(signal.SIGINT, shutdown_handler)
         signal.signal(signal.SIGTERM, shutdown_handler)
 
-        executor.submit(process_requests, request_queue, persistent_client, logger)
+        executor.submit(process_requests, request_queue, persistent_client, logger, stop_event)
 
         try:
-            while True:
-                client_socket, client_address = server_socket.accept()
-                executor.submit(
-                    handle_client, client_socket, client_address, request_queue, logger
-                )
+            while not stop_event.is_set():
+                try:
+                    client_socket, client_address = server_socket.accept()
+                    executor.submit(handle_client, client_socket, client_address, request_queue, logger)
+                except socket.error:
+                    if stop_event.is_set():
+                        break
         except OSError as exc:
             logger.error("Server error: %s", exc)
         finally:
@@ -296,15 +238,8 @@ def start_server(config):
             server_socket.close()
 
 def parse_arguments():
-    """
-    Parse command-line arguments.
-
-    :return: Parsed arguments
-    """
     parser = argparse.ArgumentParser(description="Modbus TCP Proxy Server")
-    parser.add_argument(
-        "--config", required=True, help="Path to the configuration file (YAML format)"
-    )
+    parser.add_argument("--config", required=True, help="Path to the configuration file (YAML format)")
     return parser.parse_args()
 
 if __name__ == "__main__":
