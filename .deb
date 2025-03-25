@@ -1,0 +1,13 @@
+modbus-tcp-proxy/
+├── DEBIAN
+│   └── control
+├── etc/
+│   └── Modbus-Tcp-Proxy/
+│       └── config.yaml
+├── opt/
+│   └── Modbus-Tcp-Proxy/
+│       ├── modbus_tcp_proxy.py
+│       ├── requirements.txt
+│       └── ...
+└── etc/systemd/system/
+    └── modbus_proxy.service
