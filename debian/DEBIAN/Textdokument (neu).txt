@@ -1,7 +1,0 @@
-Package: modbus-tcp-proxy
-Version: 1.0.0
-Section: utils
-Priority: optional
-Architecture: all
-Maintainer: Basti <basti@example.com>
-Description: Modbus TCP Proxy mit persistenter Verbindung und Logging
