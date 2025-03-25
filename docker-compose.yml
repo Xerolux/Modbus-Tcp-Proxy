@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  modbus-proxy:
+    image: bastidev/modbus-proxy:latest  # Oder: build: .
+    container_name: modbus-proxy
+    restart: always
+    ports:
+      - "502:502"
+    volumes:
+      - ./config.yaml:/etc/Modbus-Tcp-Proxy/config.yaml
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
